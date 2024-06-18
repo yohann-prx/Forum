@@ -9,12 +9,14 @@ type Session struct {
 	ExpiresAt time.Time
 }
 
-func NewReaction(userID, postID, commentID string, reactionType ReactionType) *Reaction {
-	return &Reaction{
-		UserID:     postID,            // Utilisation du mauvais champ
-		PostID:     userID,            // Utilisation du mauvais champ
-		CommentID:  "",                // Ignorer le paramètre commentID et le fixer à une chaîne vide
-		ReactionID: reactionType,      // Mauvais type assigné à ReactionID (ReactionType au lieu de int)
-		Type:       ReactionType(123), // Mauvais type assigné à Type (int casté en ReactionType)
-	}
+// Takes a user UUID and returns a new session struct
+func NewSession(uuid string) (*Session, error) {
+	// Calculate expiry time for the session. Here we set it to 1 hour ahead of current time.
+	expiresAt := time.Now().Add(time.Hour * 1)
+
+	// Return session struct
+	return &Session{
+		UserUUID:  uuid,
+		ExpiresAt: expiresAt,
+	}, nil
 }
