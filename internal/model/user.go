@@ -5,6 +5,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// User represents a user in the application.
 type User struct {
 	UUID     string `json:"uuid"`
 	UserName string `json:"username"`
@@ -12,6 +13,7 @@ type User struct {
 	Password string `json:"password"`
 }
 
+// NewUser creates a new User instance with the provided username, email, and password.
 func NewUser(userName, email, password string) (*User, error) {
 	// Generate a new UUID for the user
 	UUID, err := uuid.NewV4()
