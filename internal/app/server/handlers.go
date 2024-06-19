@@ -432,3 +432,67 @@ func (s *server) createPost() http.HandlerFunc {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
+
+func (s *server) createCategoryPage() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Vérification de la méthode HTTP
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Initialisation du message d'erreur
+		var errorMessage string
+		switch r.URL.Query().Get("error") {
+		case "checkError":
+			errorMessage = "Failed to check category existence."
+		case "categoryExists":
+			errorMessage = "This category already exists."
+		}
+
+		// Préparation des données à passer au template
+		data := map[string]string{"ErrorMessage": errorMessage}
+
+		// Exécution du template
+		execTmpl(w, templates.Lookup("createCategory.html"), data)
+	}
+}
+
+func (s *server) createCategory() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Vérification de la méthode HTTP
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Récupération du nom de la catégorie depuis le formulaire
+		categoryName := r.FormValue("categoryName")
+
+		// Vérification si la catégorie existe déjà
+		exists, err := s.store.Category().Exists(categoryName)
+		if err != nil {
+			s.logger.Println("Check category existence error:", err)
+			http.Redirect(w, r, "/createCategoryPage?error=checkError", http.StatusSeeOther)
+			return
+		}
+
+		// Si la catégorie existe déjà, rediriger avec un message d'erreur
+		if exists {
+			s.logger.Println("Category already exists:", categoryName)
+			http.Redirect(w, r, "/createCategoryPage?error=categoryExists", http.StatusSeeOther)
+			return
+		}
+
+		// Création de la nouvelle catégorie
+		category := &model.Category{Name: categoryName}
+		if err := s.store.Category().Create(category); err != nil {
+			s.logger.Println("Create category error:", err)
+			http.Redirect(w, r, "/createCategoryPage", http.StatusSeeOther)
+			return
+		}
+
+		// Redirection vers la page d'accueil après la création réussie de la catégorie
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
