@@ -1,5 +1,7 @@
 package model
 
-type pagedata struct {
-	// Add your struct fields here
+type PageData struct {
+	User       *User
+	Posts      []*Post
+	Categories []*Category
 }
