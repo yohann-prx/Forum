@@ -721,3 +721,56 @@ func (s *server) logout() http.HandlerFunc {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
+
+func (s *server) createComment() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Get session cookie
+		sessionCookie, err := r.Cookie("session_uuid")
+		if err != nil {
+			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
+			return
+		}
+
+		// Fetch the session
+		session, err := s.store.Session().GetByUUID(sessionCookie.Value)
+		if err != nil {
+			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
+			return
+		}
+
+		// Get the user UUID from session
+		userUUID := session.UserUUID
+
+		// Get post ID from form
+		postID := r.FormValue("postID")
+		if postID == "" {
+			http.Error(w, "Post ID is required", http.StatusBadRequest)
+			return
+		}
+
+		// Get comment text from form
+		commentTxt := r.FormValue("commentText")
+		if commentTxt == "" {
+			http.Error(w, "Comment text is required", http.StatusBadRequest)
+			return
+		}
+
+		// Create new comment
+		comment, err := model.NewComment(postID, userUUID, commentTxt)
+		if err != nil {
+			s.logger.Println("NewComment() error: ", err)
+			http.Error(w, "Failed to create comment", http.StatusInternalServerError)
+			return
+		}
+
+		// Save the comment
+		if err = s.store.Comment().Create(comment); err != nil {
+			s.logger.Println("CreateComment() error: ", err)
+			http.Error(w, "Failed to save comment", http.StatusInternalServerError)
+			return
+		}
+
+		// Redirect back to homepage
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
