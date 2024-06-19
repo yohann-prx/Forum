@@ -80,3 +80,27 @@ func (r *UserRepository) Login(user *model.User) error {
 
 	return nil
 }
+
+func (r *UserRepository) Register(user *model.User) error {
+	// Hasher le mot de passe
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("password hashing failed: %v", err)
+	}
+
+	// Préparer la requête d'insertion
+	queryInsert := "INSERT INTO users(UUID, email, username, password) VALUES(?, ?, ?, ?)"
+	stmt, err := r.store.Db.Prepare(queryInsert)
+	if err != nil {
+		return fmt.Errorf("insert statement preparation failed: %v", err)
+	}
+	defer stmt.Close()
+
+	// Exécuter l'insertion avec les valeurs hashées du mot de passe
+	_, err = stmt.Exec(user.UUID, user.Email, user.UserName, hashedPassword)
+	if err != nil {
+		return fmt.Errorf("insert execution failed: %v", err)
+	}
+
+	return nil
+}
