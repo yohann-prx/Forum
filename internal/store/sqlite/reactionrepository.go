@@ -38,16 +38,38 @@ func (r *ReactionRepository) GetUserCommentReaction(userID, commentID string) (*
 	return &reaction, err
 }
 
+func (r *ReactionRepository) CountCommentReactions(commentID string) (int, error) {
+	queryCount := "SELECT COUNT(*) FROM comment_reactions WHERE comment_id = ?"
+	var count int
+	err := r.store.Db.QueryRow(queryCount, commentID).Scan(&count)
+	return count, err
+}
+
+func (r *ReactionRepository) CreatePostReaction(reaction *model.Reaction) error {
+	queryInsert := "INSERT INTO post_reactions(post_id, user_UUID, reaction_id) VALUES (?, ?, ?)"
+	_, err := r.store.Db.Exec(queryInsert, reaction.PostID, reaction.UserID, reaction.ReactionID)
+	if err != nil {
+		return fmt.Errorf("createReaction error: %w", err)
+	}
+	return nil
+}
+
+func (r *ReactionRepository) DeletePostReaction(userID, postID string) error {
+	queryDelete := "DELETE FROM post_reactions WHERE user_UUID = ? AND post_id = ?"
+	_, err := r.store.Db.Exec(queryDelete, userID, postID)
+	return err
+}
+
 func (r *ReactionRepository) GetUserPostReaction(userID, postID string) (*model.Reaction, error) {
 	var reaction model.Reaction
 	queryGet := "SELECT user_UUID, post_id, reaction_id FROM post_reactions WHERE user_UUID = ? AND post_id = ?"
-	err := r.store.Db.QueryRow(queryGet, "invalid_user_id", "invalid_post_id").Scan(&reaction.UserID, &reaction.PostID, &reaction.ReactionID)
+	err := r.store.Db.QueryRow(queryGet, userID, postID).Scan(&reaction.UserID, &reaction.PostID, &reaction.ReactionID)
 	return &reaction, err
 }
 
 func (r *ReactionRepository) CountPostReactions(postID string) (int, error) {
 	queryCount := "SELECT COUNT(*) FROM post_reactions WHERE post_id = ?"
 	var count int
-	err := r.store.Db.QueryRow(queryCount, "invalid_post_id").Scan(&count)
+	err := r.store.Db.QueryRow(queryCount, postID).Scan(&count)
 	return count, err
 }
