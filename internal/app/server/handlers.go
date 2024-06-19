@@ -1,7 +1,9 @@
 package server
 
 import (
+	"fmt"
 	"html/template"
+	"net/http"
 )
 
 var templates = template.Must(template.ParseGlob("./web/templates/*.html"))
@@ -23,4 +25,31 @@ func (s *server) HandlePaths() {
 	s.router.HandleFunc("/createComment", s.createComment())
 	s.router.HandleFunc("/createPostReaction", s.handleCreatePostReaction())
 	s.router.HandleFunc("/reactComment", s.handleCreateCommentReaction())
+}
+
+func (s *server) registerPage() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Vérifier la méthode HTTP
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Exécuter le template
+		err := execTmpl(w, templates.Lookup("registerPage.html"), nil)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+// Fonction utilitaire pour exécuter le template avec gestion des erreurs
+func execTmpl(w http.ResponseWriter, tmpl *template.Template, data interface{}) error {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := tmpl.Execute(w, data)
+	if err != nil {
+		return fmt.Errorf("template execution failed: %v", err)
+	}
+	return nil
 }
