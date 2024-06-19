@@ -2,10 +2,61 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Create Post</title>
+    <link href="/static/bootstrap.css" rel="stylesheet">
+    <link type="text/css" rel="stylesheet" href="/static/main.css">
 </head>
 <body>
-    
+<nav class="navbar sticky-top navbar-expand-lg text-body-tertiary mb-5" style="background-color: #66BB6A">
+    <div class="container-fluid">
+        <a href="/" class="navbar-brand">Forum</a>
+        <!-- Navigation bar setup ... -->
+    </div>
+</nav>
+<main>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title m-2">Create a Post</h5>
+            </div>
+            <div class="card-body">
+                <!-- Display error message if category is not selected -->
+                {{if .ErrorMessage}}
+                <div class="alert alert-danger" role="alert">
+                    {{.ErrorMessage}}
+                </div>
+                {{end}}
+
+                <form method="POST" action="/createPost">
+                    <div class="mb-2">
+                        <label for="postTitle" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="postTitle" name="postTitle" placeholder="Type title here..." required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="postText" class="form-label">Post</label>
+                        <textarea class="form-control" id="postText" name="postText" rows="5" placeholder="Share your mind here..." required></textarea>
+                    </div>
+                    <label>Select Category:</label>
+                    <div>
+                        {{ range .Categories }}
+                        <input type="checkbox" id="category{{ .ID }}" name="categoryIDs" value="{{ .ID }}">
+                        <label for="category{{ .ID }}">{{ .Name }}</label>
+                        {{ end }}
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-2">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="navbar fixed-bottom bg-body-secondary">
+    <div class="container-fluid">
+        © 2024
+    </div>
+</footer>
+<script src="/static/bootstrap.bundle.js"></script>
 </body>
 </html>

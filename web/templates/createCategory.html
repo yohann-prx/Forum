@@ -2,10 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Create Category</title>
+    <link href="/static/bootstrap.css" rel="stylesheet">
+    <link type="text/css" rel="stylesheet" href="/static/main.css">
 </head>
 <body>
-    
+<nav class="navbar sticky-top navbar-expand-lg text-body-tertiary mb-5" style="background-color: #66BB6A">
+    <div class="container-fluid">
+        <a href="/" class="navbar-brand">Forum</a>
+        <div class="d-flex">
+            <!-- ... navbar setup ... -->
+        </div>
+    </div>
+</nav>
+
+<main>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title m-2">Create a Category</h5>
+            </div>
+            <div class="card-body">
+                {{if .ErrorMessage}}
+                <div class="alert alert-danger" role="alert">
+                    {{.ErrorMessage}}
+                </div>
+                {{end}}
+                <form method="POST" action="/createCategory">
+                    <div class="mb-2">
+                        <label for="categoryName" class="form-label">Category Name</label>
+                        <input type="text" class="form-control" id="categoryName" name="categoryName" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Category</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="navbar fixed-bottom bg-body-secondary">
+    <div class="container-fluid">
+        © 2024
+    </div>
+</footer>
+<script src="/static/bootstrap.bundle.js"></script>
 </body>
 </html>
