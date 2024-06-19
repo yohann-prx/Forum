@@ -1,6 +1,6 @@
 package model
 
 type PostCategory struct {
-	PostID     string
-	CategoryID int
+	ID   int
+	Name string
 }
