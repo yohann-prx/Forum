@@ -1,9 +1,8 @@
 package model
 
 import (
-	"time"
-
 	"github.com/gofrs/uuid"
+	"time"
 )
 
 type Comment struct {
