@@ -1,9 +1,11 @@
 package sqlite
 
 import (
-	"database/sql"
+	"SPORTALK/internal/model"
 	"errors"
 	"fmt"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserRepository struct {
@@ -11,39 +13,62 @@ type UserRepository struct {
 }
 
 func (r *UserRepository) ExistingUser(userName, email string) error {
-	tx, err := r.store.Db.Begin()
+	queryEmail := "SELECT * FROM users WHERE email = ?"
+	rows, err := r.store.Db.Query(queryEmail, email)
 	if err != nil {
-		return fmt.Errorf("transaction start failed: %v", err)
-	}
-	defer tx.Rollback()
-
-	// Vérification de l'email
-	queryEmail := "SELECT 1 FROM users WHERE email = ? LIMIT 1"
-	var emailExists int
-	err = tx.QueryRow(queryEmail, email).Scan(&emailExists)
-	if err != nil && err != sql.ErrNoRows {
 		return fmt.Errorf("email check failed: %v", err)
 	}
-	if emailExists == 1 {
+	defer rows.Close()
+
+	if rows.Next() {
 		return errors.New("email already in use")
 	}
 
-	// Vérification du nom d'utilisateur
-	queryName := "SELECT 1 FROM users WHERE username = ? LIMIT 1"
-	var usernameExists int
-	err = tx.QueryRow(queryName, userName).Scan(&usernameExists)
-	if err != nil && err != sql.ErrNoRows {
-		return fmt.Errorf("username check failed: %v", err)
+	queryName := "SELECT * FROM users WHERE username = ?"
+	rows, err = r.store.Db.Query(queryName, userName)
+	if err != nil {
+		return fmt.Errorf("user name check failed: %v", err)
 	}
-	if usernameExists == 1 {
+	defer rows.Close()
+
+	if rows.Next() {
 		return errors.New("username already in use")
 	}
 
-	// Commit la transaction si tout est OK
-	err = tx.Commit()
+	return nil
+}
+
+func (r *UserRepository) Login(user *model.User) error {
+	var hashedPassword string
+	err := r.store.Db.QueryRow("SELECT UUID, email, username, password FROM users WHERE email = ?", user.Email).Scan(&user.UUID, &user.Email, &user.UserName, &hashedPassword)
 	if err != nil {
-		return fmt.Errorf("transaction commit failed: %v", err)
+		return err
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(user.Password))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *UserRepository) Register(user *model.User) error {
+	queryInsert := "INSERT INTO users(UUID, email, username, password) VALUES(?, ?, ?, ?) "
+	_, err := r.store.Db.Exec(queryInsert, user.UUID, user.Email, user.UserName, user.Password)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Gets a user by UUID
+func (r *UserRepository) GetByUUID(uuid string) (*model.User, error) {
+	var u model.User
+	if err := r.store.Db.QueryRow(
+		"SELECT UUID, username, email, password FROM users WHERE UUID = ?",
+		uuid,
+	).Scan(&u.UUID, &u.UserName, &u.Email, &u.Password); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return &u, nil
 }
