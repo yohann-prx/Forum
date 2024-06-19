@@ -586,3 +586,79 @@ func (s *server) categoryPosts() http.HandlerFunc {
 		execTmpl(w, templates.Lookup("home.html"), data)
 	}
 }
+
+func (s *server) registerHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Récupération des données du formulaire
+		userName := r.FormValue("username")
+		password := r.FormValue("password")
+		email := r.FormValue("email")
+
+		// Vérification que tous les champs sont remplis
+		if userName == "" || password == "" || email == "" {
+			data := struct {
+				ErrorMsg string
+			}{
+				ErrorMsg: "All fields must be provided",
+			}
+			execTmpl(w, templates.Lookup("registerPage.html"), data)
+			return
+		}
+
+		// Vérification si l'utilisateur existe déjà
+		err := s.store.User().ExistingUser(userName, email)
+		if err != nil {
+			s.logger.Println("ExistingUser() error:", err)
+			data := struct {
+				UserExistsErrorMsg string
+			}{
+				UserExistsErrorMsg: "User already exists in the system",
+			}
+			execTmpl(w, templates.Lookup("registerPage.html"), data)
+			return
+		}
+
+		// Création d'un nouvel utilisateur
+		user, err := model.NewUser(userName, email, password)
+		if err != nil {
+			s.logger.Println("NewUser() error:", err)
+			http.Redirect(w, r, "/registerPage", http.StatusSeeOther)
+			return
+		}
+
+		// Enregistrement de l'utilisateur dans la base de données
+		if err = s.store.User().Register(user); err != nil {
+			s.logger.Println("Register() error:", err)
+			http.Redirect(w, r, "/registerPage", http.StatusSeeOther)
+			return
+		}
+
+		// Création d'une nouvelle session pour l'utilisateur
+		session, err := model.NewSession(user.UUID)
+		if err != nil {
+			s.logger.Println("NewSession() error:", err)
+			http.Error(w, "Failed to create session", http.StatusInternalServerError)
+			return
+		}
+
+		// Stockage de la session dans la base de données
+		if err := s.store.Session().Create(session); err != nil {
+			s.logger.Println("Create() error:", err)
+			http.Error(w, "Failed to store session", http.StatusInternalServerError)
+			return
+		}
+
+		// Définition d'un cookie pour la session
+		cookie := &http.Cookie{
+			Name:     "session_uuid",
+			Value:    session.SessionID,
+			Expires:  session.ExpiresAt,
+			HttpOnly: true,
+			Secure:   false, // Mettre à true si vous utilisez HTTPS
+		}
+		http.SetCookie(w, cookie)
+
+		// Redirection de l'utilisateur vers son profil
+		http.Redirect(w, r, "/home", http.StatusSeeOther)
+	}
+}
