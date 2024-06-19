@@ -1,7 +1,7 @@
 package sqlite
 
 import (
-	"SPORTALK/internal/model"
+	"Forum/internal/model"
 	"errors"
 	"fmt"
 
