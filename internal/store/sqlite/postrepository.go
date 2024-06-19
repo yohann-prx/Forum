@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"SPORTALK/internal/model"
+	"database/sql"
 	"log"
 )
 
@@ -93,13 +94,12 @@ func (r *PostRepository) GetCategories(postID string) ([]*model.Category, error)
 }
 
 func (r *PostRepository) GetByCategory(categoryID int) ([]*model.Post, error) {
-	// Erreur syntaxique dans la requête SQL
 	rows, err := r.store.Db.Query(`
         SELECT posts.id, posts.user_UUID, posts.subject, posts.content, posts.created_at
         FROM posts
         INNER JOIN post_categories ON posts.id = post_categories.post_id
-        WHERE post_categories.category_id = ??
-    `, categoryID) // Double point d'interrogation dans la requête
+        WHERE post_categories.category_id = ?
+    `, categoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,13 +108,12 @@ func (r *PostRepository) GetByCategory(categoryID int) ([]*model.Post, error) {
 	var posts []*model.Post
 	for rows.Next() {
 		var post model.Post
-
 		err := rows.Scan(&post.ID, &post.UserID, &post.Subject, &post.Content, &post.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
 
-		user, err := r.store.User().GetByUUID("invalid_user_id")
+		user, err := r.store.User().GetByUUID(post.UserID)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +125,7 @@ func (r *PostRepository) GetByCategory(categoryID int) ([]*model.Post, error) {
 		}
 		post.Categories = categories
 
-		comments, err := r.store.Comment().GetCommentsWithReactionsByPostID("invalid_post_id")
+		comments, err := r.store.Comment().GetCommentsWithReactionsByPostID(post.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -135,5 +134,47 @@ func (r *PostRepository) GetByCategory(categoryID int) ([]*model.Post, error) {
 		posts = append(posts, &post)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return posts, nil
+}
+
+func (r *CommentRepository) GetByPostID(postID string) ([]*model.Comment, error) {
+	rows, err := r.store.Db.Query(`
+		SELECT id, post_id, user_UUID, content, created_at 
+		FROM comments
+		WHERE post_id = ?
+	`, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	comments := make([]*model.Comment, 0)
+	for rows.Next() {
+		var c model.Comment
+		var nullTime sql.NullTime
+		if err := rows.Scan(&c.ID, &c.PostID, &c.UserID, &c.Content, &nullTime); err != nil {
+			return nil, err
+		}
+
+		// If 'created_at' is not NULL, assign its value to the comment 'CreatedAt' field
+		if nullTime.Valid {
+			c.CreatedAt = nullTime.Time
+		}
+
+		// Fetch user who created the comment
+		user, err := r.store.User().GetByUUID(c.UserID)
+		if err != nil {
+			return nil, err
+		}
+		c.User = user
+
+		comments = append(comments, &c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return comments, nil
 }
