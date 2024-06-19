@@ -1,0 +1,11 @@
+user : Yohann
+mail : yohann.prieux@gmail.com
+password : Yohann
+
+user : Bob
+mail : bob@gmail.com
+password : Bob
+
+user : John
+mail : john@gmail.com
+password : John
