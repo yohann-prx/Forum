@@ -2,9 +2,8 @@ package model
 
 import (
 	"database/sql"
-	"time"
-
 	"github.com/gofrs/uuid"
+	"time"
 )
 
 type Post struct {
