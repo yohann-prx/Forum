@@ -6,6 +6,7 @@ type CommentRepository struct {
 	store *Store
 }
 
+// Create creates a new comment
 func (r *CommentRepository) Create(c *model.Comment) error {
 	_, err := r.store.Db.Exec(`
         INSERT INTO comments (id, post_id, user_UUID, content, created_at)
@@ -14,6 +15,8 @@ func (r *CommentRepository) Create(c *model.Comment) error {
 
 	return err
 }
+
+// GetCommentsByPostID returns all comments by post ID
 func (r *CommentRepository) GetCommentsWithReactionsByPostID(postID string) ([]*model.Comment, error) {
 	query := `
     SELECT c.id, c.post_id, c.user_uuid, c.content, c.created_at,

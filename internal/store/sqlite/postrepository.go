@@ -11,11 +11,13 @@ type PostRepository struct {
 	Logger *log.Logger
 }
 
+// Create creates a new post
 func (r *PostRepository) AddCategoryToPost(postID string, categoryID int) error {
 	_, err := r.store.Db.Exec(`INSERT INTO post_categories (post_id, category_id) VALUES (?, ?)`, postID, categoryID)
 	return err
 }
 
+// Create creates a new post
 func (r *PostRepository) GetAll() ([]*model.Post, error) {
 	query := `
     SELECT p.id, p.user_UUID, p.subject, p.content, p.created_at,
@@ -69,6 +71,7 @@ func (r *PostRepository) GetAll() ([]*model.Post, error) {
 	return posts, nil
 }
 
+// Create creates a new post
 func (r *PostRepository) GetCategories(postID string) ([]*model.Category, error) {
 	rows, err := r.store.Db.Query(`
         SELECT categories.id, categories.category_name
@@ -93,6 +96,7 @@ func (r *PostRepository) GetCategories(postID string) ([]*model.Category, error)
 	return categories, rows.Err()
 }
 
+// Create creates a new post
 func (r *PostRepository) GetByCategory(categoryID int) ([]*model.Post, error) {
 	rows, err := r.store.Db.Query(`
         SELECT posts.id, posts.user_UUID, posts.subject, posts.content, posts.created_at
@@ -140,6 +144,7 @@ func (r *PostRepository) GetByCategory(categoryID int) ([]*model.Post, error) {
 	return posts, nil
 }
 
+// Create creates a new post
 func (r *CommentRepository) GetByPostID(postID string) ([]*model.Comment, error) {
 	rows, err := r.store.Db.Query(`
 		SELECT id, post_id, user_UUID, content, created_at 

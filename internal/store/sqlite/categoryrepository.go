@@ -8,11 +8,13 @@ type CategoryRepository struct {
 	store *Store
 }
 
+// NewCategoryRepository creates a new category repository
 func (r *CategoryRepository) Create(cate *model.Category) error {
 	_, err := r.store.Db.Exec(`INSERT INTO categories (category_name) VALUES (?)`, cate.Name)
 	return err
 }
 
+// GetAll returns all categories
 func (r *CategoryRepository) GetAll() ([]*model.Category, error) {
 	rows, err := r.store.Db.Query("SELECT id, category_name FROM categories")
 	if err != nil {
@@ -37,11 +39,13 @@ func (r *CategoryRepository) GetAll() ([]*model.Category, error) {
 	return categories, nil
 }
 
+// GetByID returns a category by its ID
 func (r *CategoryRepository) AddCategoryToPost(postID string, categoryID int) error {
 	_, err := r.store.Db.Exec(`INSERT INTO post_categories (post_id, category_id) VALUES (?, ?)`, postID, categoryID)
 	return err
 }
 
+// Exists checks if a category exists
 func (r *CategoryRepository) Exists(name string) (bool, error) {
 	var count int
 	err := r.store.Db.QueryRow(`SELECT COUNT(*) FROM categories WHERE category_name = ?`, name).Scan(&count)

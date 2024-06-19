@@ -9,6 +9,7 @@ type ReactionRepository struct {
 	store *Store
 }
 
+// CreateCommentReaction creates a new comment reaction
 func (r *ReactionRepository) CreateCommentReaction(reaction *model.Reaction) error {
 	queryInsert := "INSERT INTO comment_reactions(comment_id, user_UUID, reaction_id) VALUES (?, ?, ?)"
 	_, err := r.store.Db.Exec(queryInsert, reaction.CommentID, reaction.UserID, reaction.ReactionID)
@@ -17,6 +18,8 @@ func (r *ReactionRepository) CreateCommentReaction(reaction *model.Reaction) err
 	}
 	return nil
 }
+
+// UpdateCommentReaction updates a comment reaction
 func (r *ReactionRepository) UpdatePostReaction(userID, postID string, reactionID int) error {
 	queryUpdate := "UPDATE post_reactions SET reaction_id = ? WHERE user_UUID = ? AND post_id = ?"
 	_, err := r.store.Db.Exec(queryUpdate, reactionID, userID, postID)
@@ -25,12 +28,15 @@ func (r *ReactionRepository) UpdatePostReaction(userID, postID string, reactionI
 	}
 	return nil
 }
+
+// DeleteCommentReaction deletes a comment reaction
 func (r *ReactionRepository) DeleteCommentReaction(userID, commentID string) error {
 	queryDelete := "DELETE FROM comment_reactions WHERE user_UUID = ? AND comment_id = ?"
 	_, err := r.store.Db.Exec(queryDelete, userID, commentID)
 	return err
 }
 
+// GetUserCommentReaction gets a user's comment reaction
 func (r *ReactionRepository) GetUserCommentReaction(userID, commentID string) (*model.Reaction, error) {
 	var reaction model.Reaction
 	queryGet := "SELECT user_UUID, comment_id, reaction_id FROM comment_reactions WHERE user_UUID = ? AND comment_id = ?"
@@ -38,6 +44,7 @@ func (r *ReactionRepository) GetUserCommentReaction(userID, commentID string) (*
 	return &reaction, err
 }
 
+// CountCommentReactions counts the number of reactions on a comment
 func (r *ReactionRepository) CountCommentReactions(commentID string) (int, error) {
 	queryCount := "SELECT COUNT(*) FROM comment_reactions WHERE comment_id = ?"
 	var count int
@@ -45,6 +52,7 @@ func (r *ReactionRepository) CountCommentReactions(commentID string) (int, error
 	return count, err
 }
 
+// CreatePostReaction creates a new post reaction
 func (r *ReactionRepository) CreatePostReaction(reaction *model.Reaction) error {
 	queryInsert := "INSERT INTO post_reactions(post_id, user_UUID, reaction_id) VALUES (?, ?, ?)"
 	_, err := r.store.Db.Exec(queryInsert, reaction.PostID, reaction.UserID, reaction.ReactionID)
@@ -54,12 +62,14 @@ func (r *ReactionRepository) CreatePostReaction(reaction *model.Reaction) error 
 	return nil
 }
 
+// UpdatePostReaction updates a post reaction
 func (r *ReactionRepository) DeletePostReaction(userID, postID string) error {
 	queryDelete := "DELETE FROM post_reactions WHERE user_UUID = ? AND post_id = ?"
 	_, err := r.store.Db.Exec(queryDelete, userID, postID)
 	return err
 }
 
+// GetUserPostReaction gets a user's post reaction
 func (r *ReactionRepository) GetUserPostReaction(userID, postID string) (*model.Reaction, error) {
 	var reaction model.Reaction
 	queryGet := "SELECT user_UUID, post_id, reaction_id FROM post_reactions WHERE user_UUID = ? AND post_id = ?"
@@ -67,6 +77,7 @@ func (r *ReactionRepository) GetUserPostReaction(userID, postID string) (*model.
 	return &reaction, err
 }
 
+// CountPostReactions counts the number of reactions on a post
 func (r *ReactionRepository) CountPostReactions(postID string) (int, error) {
 	queryCount := "SELECT COUNT(*) FROM post_reactions WHERE post_id = ?"
 	var count int

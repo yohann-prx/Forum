@@ -1,8 +1,9 @@
 package model
 
 import (
-	"github.com/gofrs/uuid"
 	"time"
+
+	"github.com/gofrs/uuid"
 )
 
 type Comment struct {
@@ -16,6 +17,7 @@ type Comment struct {
 	DislikeCount int
 }
 
+// NewComment creates a new comment
 func NewComment(postID, userUUID, content string) (*Comment, error) {
 	// Create a new UUID for the comment
 	id, err := uuid.NewV4()
