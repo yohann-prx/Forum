@@ -2,6 +2,7 @@ package server
 
 import (
 	"SPORTALK/internal/model"
+	"database/sql"
 	"fmt"
 	"html/template"
 	"log"
@@ -772,5 +773,95 @@ func (s *server) createComment() http.HandlerFunc {
 
 		// Redirect back to homepage
 		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
+
+func (s *server) handleCreatePostReaction() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Error parsing form", http.StatusBadRequest)
+			return
+		}
+
+		// Retrieve session cookie
+		sessionCookie, err := r.Cookie("session_uuid")
+		if err != nil {
+			http.Error(w, "Session error", http.StatusBadRequest)
+			return
+		}
+
+		// Fetch the session
+		session, err := s.store.Session().GetByUUID(sessionCookie.Value)
+		if err != nil {
+			http.Error(w, "Session retrieval error", http.StatusInternalServerError)
+			return
+		}
+
+		// Extract user UUID from session
+		userUUID := session.UserUUID
+
+		// Get post ID and reaction type from form
+		postID := r.FormValue("postID")
+		reactionTypeStr := r.FormValue("reactionType")
+
+		// Determine reaction ID based on reaction type
+		var reactionID int
+		switch reactionTypeStr {
+		case "like":
+			reactionID = 1
+		case "dislike":
+			reactionID = 2
+		default:
+			http.Error(w, "Invalid reaction type", http.StatusBadRequest)
+			return
+		}
+
+		// Check if the user has already reacted to the post
+		existingReaction, err := s.store.Reaction().GetUserPostReaction(userUUID, postID)
+		if err != nil && err != sql.ErrNoRows {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
+		// Delete existing reaction if it exists and matches the new reaction type
+		if existingReaction != nil {
+			if existingReaction.ReactionID == reactionID {
+				if err := s.store.Reaction().DeletePostReaction(userUUID, postID); err != nil {
+					http.Error(w, "Failed to delete reaction", http.StatusInternalServerError)
+					return
+				}
+			} else {
+				// Delete existing reaction before creating a new one
+				if err := s.store.Reaction().DeletePostReaction(userUUID, postID); err != nil {
+					http.Error(w, "Failed to delete existing reaction", http.StatusInternalServerError)
+					return
+				}
+
+				// Create new reaction
+				reaction := &model.Reaction{
+					UserID:     userUUID,
+					PostID:     postID,
+					ReactionID: reactionID,
+				}
+				if err := s.store.Reaction().CreatePostReaction(reaction); err != nil {
+					http.Error(w, "Failed to create reaction", http.StatusInternalServerError)
+					return
+				}
+			}
+		} else {
+			// Create new reaction if no existing reaction found
+			reaction := &model.Reaction{
+				UserID:     userUUID,
+				PostID:     postID,
+				ReactionID: reactionID,
+			}
+			if err := s.store.Reaction().CreatePostReaction(reaction); err != nil {
+				http.Error(w, "Failed to create reaction", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// Redirect back to the home page with the post ID
+		http.Redirect(w, r, "/home?postID="+postID, http.StatusSeeOther)
 	}
 }
