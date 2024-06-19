@@ -662,3 +662,62 @@ func (s *server) registerHandler() http.HandlerFunc {
 		http.Redirect(w, r, "/home", http.StatusSeeOther)
 	}
 }
+
+func (s *server) serveUserProfile() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Extract session cookie
+		sessionCookie, err := r.Cookie("session_uuid")
+		if err != nil {
+			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
+			return
+		}
+
+		// Fetch the session
+		session, err := s.store.Session().GetByUUID(sessionCookie.Value)
+		if err != nil {
+			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
+			return
+		}
+
+		// Fetch the user
+		user, err := s.store.User().GetByUUID(session.UserUUID)
+		if err != nil {
+			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
+			return
+		}
+
+		// Render template with user data
+		data := struct {
+			User *model.User
+		}{
+			User: user,
+		}
+		execTmpl(w, templates.Lookup("userProfilePage.html"), data)
+	}
+}
+
+func (s *server) logout() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Retrieve session cookie
+		sessionCookie, err := r.Cookie("session_uuid")
+		if err != nil {
+			// If session cookie is not found, redirect to login page
+			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
+			return
+		}
+
+		// Delete the session from the database
+		if err := s.store.Session().Delete(sessionCookie.Value); err != nil {
+			// If there's an error deleting the session, return internal server error
+			http.Error(w, "Failed to end session", http.StatusInternalServerError)
+			return
+		}
+
+		// Expire the session cookie immediately by setting MaxAge to -1
+		sessionCookie.MaxAge = -1
+		http.SetCookie(w, sessionCookie)
+
+		// Redirect the user to the home page after logout
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
