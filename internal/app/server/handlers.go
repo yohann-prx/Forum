@@ -1,7 +1,7 @@
 package server
 
 import (
-	"Forum/internal/model"
+	"SPORTALK/internal/model"
 	"database/sql"
 	"html/template"
 	"log"

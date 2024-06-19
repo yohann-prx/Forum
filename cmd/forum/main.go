@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Forum/internal/app/server"
+	"SPORTALK/internal/app/server"
 	"log"
 )
 

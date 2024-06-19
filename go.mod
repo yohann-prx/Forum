@@ -1,4 +1,4 @@
-module Forum
+module SPORTALK
 
 go 1.22.0
 

@@ -1,6 +1,6 @@
 package sqlite
 
-import "Forum/internal/model"
+import "SPORTALK/internal/model"
 
 type CommentRepository struct {
 	store *Store
