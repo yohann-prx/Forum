@@ -14,3 +14,12 @@ type Reaction struct {
 	ReactionID int          `json:"reaction_id"`
 	Type       ReactionType `json:"type"`
 }
+
+func NewReaction(userID, postID, commentID string, reactionType ReactionType) *Reaction {
+	return &Reaction{
+		UserID:    userID,
+		PostID:    postID,
+		CommentID: commentID,
+		Type:      reactionType,
+	}
+}
