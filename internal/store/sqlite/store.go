@@ -1,8 +1,8 @@
 package sqlite
 
 import (
-	"SPORTALK/internal/model"
-	"SPORTALK/internal/store"
+	"Forum/internal/model"
+	"Forum/internal/store"
 	"database/sql"
 	"log"
 )
@@ -82,28 +82,16 @@ func NewSQL(db *sql.DB) *Store {
 }
 
 func (r *PostRepository) Create(post *model.Post) error {
-	tx, err := r.store.Db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-			return
-		}
-		err = tx.Commit()
-	}()
-
-	queryInsertPost := "INSERT INTO posts(id, user_UUID, subject, content, created_at) VALUES(?, ?, ?, ?, ?)"
-	_, err = tx.Exec(queryInsertPost, post.ID, post.UserID, post.Subject, post.Content, post.CreatedAt)
+	// Insert the post first
+	queryInsert := "INSERT INTO posts(id, user_UUID, subject, content, created_at) VALUES(?, ?, ?, ?, ?)"
+	_, err := r.store.Db.Exec(queryInsert, post.ID, post.UserID, post.Subject, post.Content, post.CreatedAt)
 	if err != nil {
 		return err
 	}
 
-	queryInsertCategory := "INSERT INTO post_categories(post_id, category_id) VALUES(?, ?)"
+	// Then insert the categories
 	for _, category := range post.Categories {
-		_, err = tx.Exec(queryInsertCategory, post.ID, category.ID)
-		if err != nil {
+		if err := r.AddCategoryToPost(post.ID, category.ID); err != nil {
 			return err
 		}
 	}
@@ -111,44 +99,11 @@ func (r *PostRepository) Create(post *model.Post) error {
 	return nil
 }
 
-func (r *PostRepository) Create(post *model.Post) error {
-	tx, err := r.store.Db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-			return
-		}
-		err = tx.Commit()
-	}()
-
-	queryInsertPost := "INSERT INTO posts(id, user_UUID, subject, content, created_at) VALUES(?, ?, ?, ?, ?)"
-	stmtPost, err := tx.Prepare(queryInsertPost)
-	if err != nil {
-		return err
-	}
-	defer stmtPost.Close()
-
-	_, err = stmtPost.Exec(post.ID, post.UserID, post.Subject, post.Content, post.CreatedAt)
-	if err != nil {
-		return err
-	}
-
-	queryInsertCategory := "INSERT INTO post_categories(post_id, category_id) VALUES(?, ?)"
-	stmtCategory, err := tx.Prepare(queryInsertCategory)
-	if err != nil {
-		return err
-	}
-	defer stmtCategory.Close()
-
-	for _, category := range post.Categories {
-		_, err = stmtCategory.Exec(post.ID, category.ID)
-		if err != nil {
-			return err
+func (s *Store) Comment() store.CommentRepository {
+	if s.commentRepository == nil {
+		s.commentRepository = &CommentRepository{
+			store: s,
 		}
 	}
-
-	return nil
+	return s.commentRepository
 }
