@@ -1,8 +1,8 @@
 package server
 
 import (
-	"SPORTALK/internal/store"
-	"SPORTALK/internal/store/sqlite"
+	"Forum/internal/store"
+	"Forum/internal/store/sqlite"
 	"log"
 	"net/http"
 )
