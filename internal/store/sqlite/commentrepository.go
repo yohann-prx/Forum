@@ -1,6 +1,6 @@
 package sqlite
 
-import "SPORTALK/internal/model"
+import "Forum/internal/model"
 
 type CommentRepository struct {
 	store *Store
@@ -14,7 +14,6 @@ func (r *CommentRepository) Create(c *model.Comment) error {
 
 	return err
 }
-
 func (r *CommentRepository) GetCommentsWithReactionsByPostID(postID string) ([]*model.Comment, error) {
 	query := `
     SELECT c.id, c.post_id, c.user_uuid, c.content, c.created_at,

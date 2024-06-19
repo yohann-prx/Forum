@@ -1,7 +1,7 @@
 package sqlite
 
 import (
-	"SPORTALK/internal/model"
+	"Forum/internal/model"
 )
 
 type SessionRepository struct {
@@ -25,7 +25,6 @@ func (r *SessionRepository) GetByUUID(sessionID string) (*model.Session, error) 
 
 	return &s, nil
 }
-
 func (r *SessionRepository) Delete(uuid string) error {
 	_, err := r.store.Db.Exec("DELETE FROM sessions WHERE session_id = ?", uuid)
 	return err
