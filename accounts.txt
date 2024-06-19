@@ -9,3 +9,16 @@ password : Bob
 user : John
 mail : john@gmail.com
 password : John
+
+user : dada416
+mail : yanis.fronteau@ynov.com
+password : GoodPassword
+
+user : Pessi
+mail : Pessidunet@gmail.com
+password : Pessi 
+
+user : AmineZeubio
+mail : AmineZeubio@gmail.com
+password : Zbeubzbeub
+

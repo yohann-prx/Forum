@@ -1,0 +1,5 @@
+{
+    "port": ":8080",
+    "db_path": "./internal/db/forum.db",
+    "db_driver": "sqlite3"
+}
