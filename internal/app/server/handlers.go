@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -354,5 +355,80 @@ func (s *server) createPostPage() http.HandlerFunc {
 			s.logger.Println("Failed to execute template:", err)
 			http.Error(w, "Failed to execute template", http.StatusInternalServerError)
 		}
+	}
+}
+
+func (s *server) createPost() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Vérification de la méthode HTTP
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Récupération du cookie de session
+		sessionCookie, err := r.Cookie("session_uuid")
+		if err != nil {
+			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
+			return
+		}
+
+		// Récupération de la session
+		session, err := s.store.Session().GetByUUID(sessionCookie.Value)
+		if err != nil {
+			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
+			return
+		}
+
+		// Récupération de l'UUID de l'utilisateur à partir de la session
+		userUUID := session.UserUUID
+
+		// Récupération des données du formulaire
+		subject := r.FormValue("postTitle")
+		content := r.FormValue("postText")
+
+		// Analyse du formulaire pour les cases à cocher des catégories
+		r.ParseForm()
+		categoryIDs := r.PostForm["categoryIDs"]
+
+		// Validation des catégories du post
+		if len(categoryIDs) == 0 {
+			http.Redirect(w, r, "/createPostPage?error=atleast_one_category_required", http.StatusSeeOther)
+			return
+		}
+
+		// Création du post
+		post, err := model.NewPost(userUUID, subject, content)
+		if err != nil {
+			s.logger.Println("NewPost() error:", err)
+			http.Redirect(w, r, "/createPostPage", http.StatusSeeOther)
+			return
+		}
+
+		// Enregistrement du post dans la base de données
+		if err = s.store.Post().Create(post); err != nil {
+			s.logger.Println("Create() error:", err)
+			http.Redirect(w, r, "/createPostPage", http.StatusSeeOther)
+			return
+		}
+
+		// Ajout des catégories au post
+		for _, categoryIDStr := range categoryIDs {
+			categoryID, err := strconv.Atoi(categoryIDStr)
+			if err != nil {
+				s.logger.Println("Error converting categoryID to int:", err)
+				http.Redirect(w, r, "/createPostPage", http.StatusSeeOther)
+				return
+			}
+
+			if err := s.store.Post().AddCategoryToPost(post.ID, categoryID); err != nil {
+				s.logger.Println("Error adding category to post:", err)
+				http.Redirect(w, r, "/createPostPage", http.StatusSeeOther)
+				return
+			}
+		}
+
+		// Redirection vers la page d'accueil après la création réussie du post
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
