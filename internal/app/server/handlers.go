@@ -2,7 +2,7 @@ package server
 
 import (
 	"SPORTALK/internal/model"
-	"fmt"
+	"database/sql"
 	"html/template"
 	"log"
 	"net/http"
@@ -33,48 +33,20 @@ func (s *server) HandlePaths() {
 
 func (s *server) registerPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Vérifier la méthode HTTP
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Exécuter le template
-		err := execTmpl(w, templates.Lookup("registerPage.html"), nil)
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
+		execTmpl(w, templates.Lookup("registerPage.html"), nil)
 	}
-}
-
-// Fonction utilitaire pour exécuter le template avec gestion des erreurs
-func execTmpl(w http.ResponseWriter, tmpl *template.Template, data interface{}) error {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err := tmpl.Execute(w, data)
-	if err != nil {
-		return fmt.Errorf("template execution failed: %v", err)
-	}
-	return nil
 }
 
 func (s *server) saveRegister() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := model.RegisterPageData{}
 
-		// Vérification de la méthode HTTP
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Récupération des valeurs des champs du formulaire
 		userName := r.FormValue("userName")
 		email := r.FormValue("email")
 		password := r.FormValue("password")
 		rePassword := r.FormValue("rePassword")
 
-		// Vérification si les mots de passe correspondent
+		// Check if passwords match
 		if password != rePassword {
 			s.logger.Println("Passwords don't match")
 			data.ErrorMsg = "Passwords don't match"
@@ -82,151 +54,101 @@ func (s *server) saveRegister() http.HandlerFunc {
 			return
 		}
 
-		// Vérification si l'utilisateur existe déjà
 		err := s.store.User().ExistingUser(userName, email)
 		if err != nil {
-			s.logger.Println("ExistingUser() error:", err)
+			s.logger.Println("error:", err)
 			data.UserExistsErrorMsg = "User already exists in the system"
 			execTmpl(w, templates.Lookup("registerPage.html"), data)
 			return
 		}
 
-		// Création d'un nouvel utilisateur
 		user, err := model.NewUser(userName, email, password)
 		if err != nil {
-			s.logger.Println("NewUser() error:", err)
+			s.logger.Println("NewUser() error: ", err)
 			data.ErrorMsg = "Failed to create the user"
 			execTmpl(w, templates.Lookup("registerPage.html"), data)
 			return
 		}
 
-		// Enregistrement de l'utilisateur
 		if err = s.store.User().Register(user); err != nil {
-			s.logger.Println("Register() error:", err)
+			s.logger.Println("Register() error: ", err)
 			data.ErrorMsg = "Failed to register the user"
 			execTmpl(w, templates.Lookup("registerPage.html"), data)
 			return
 		}
 
-		// Redirection vers une page principale après l'inscription réussie
-		http.Redirect(w, r, "/main", http.StatusSeeOther)
+		execTmpl(w, templates.Lookup("main.html"), nil)
 	}
 }
-
 func (s *server) loginPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Vérification de la méthode HTTP
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Déterminer le message d'erreur à afficher
 		errorMessage := ""
-		errMsg := r.URL.Query().Get("error")
-		switch errMsg {
-		case "notfound":
+		if errMsg := r.URL.Query().Get("error"); errMsg == "notfound" {
 			errorMessage = "User not found. Please try again."
-		case "invalid":
-			errorMessage = "Invalid username or password. Please try again."
-		default:
-			// Aucune erreur spécifiée dans l'URL
 		}
 
-		// Exécuter le template avec les données nécessaires
-		data := map[string]string{"ErrorMessage": errorMessage}
-		execTmpl(w, templates.Lookup("login.html"), data)
+		execTmpl(w, templates.Lookup("login.html"), map[string]string{"ErrorMessage": errorMessage})
 	}
 }
 
 func (s *server) login() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Vérification de la méthode HTTP
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Récupération des valeurs du formulaire
+		s.logger.Println("@ login page")
 		email := r.FormValue("email")
 		password := r.FormValue("password")
+		s.logger.Println(email)
 
-		// Création d'une instance utilisateur avec les informations de connexion
 		user := &model.User{
 			Email:    email,
 			Password: password,
 		}
 
-		// Authentification de l'utilisateur
-		err := s.store.User().Login(user)
-		if err != nil {
-			s.logger.Println("Login() error:", err)
-			// Redirection vers la page de connexion avec un message d'erreur approprié
+		// Authenticate the user
+		if err := s.store.User().Login(user); err != nil {
+			// we changed here to include an error message in the query parameters
+			s.logger.Println("Login() error: ", err)
 			http.Redirect(w, r, "/loginPage?error=notfound", http.StatusSeeOther)
 			return
 		}
 
-		// Création d'une nouvelle session pour l'utilisateur
+		// Create a new session for the user
 		session, err := model.NewSession(user.UUID)
 		if err != nil {
-			s.logger.Println("NewSession() error:", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			s.logger.Println("NewSession() error: ", err)
+			http.Redirect(w, r, "/loginPage", http.StatusInternalServerError)
 			return
 		}
 
-		// Enregistrement de la session dans la base de données
-		err = s.store.Session().Create(session)
-		if err != nil {
-			s.logger.Println("CreateSession() error:", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		// Store the session in the database
+		if err := s.store.Session().Create(session); err != nil {
+			s.logger.Println("CreateSession() error: ", err)
+			http.Redirect(w, r, "/loginPage", http.StatusInternalServerError)
 			return
 		}
 
-		// Définition d'un cookie de session sécurisé
+		// Set a session cookie
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_uuid",
 			Value:    session.SessionID,
 			Expires:  session.ExpiresAt,
 			HttpOnly: true,
-			Secure:   false, // Modifier à true si vous utilisez HTTPS
-			Path:     "/",
+			Secure:   false, // Set to true if you have HTTPS
 		})
 
-		// Redirection de l'utilisateur vers sa page d'accueil
+		// Redirect the user to their profile
 		http.Redirect(w, r, "/home", http.StatusSeeOther)
 	}
 }
 
 func (s *server) serveStatic() http.HandlerFunc {
-	fs := http.FileServer(http.Dir("./web/static"))
-
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Vérification de la méthode HTTP
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Sécurité : Vérifier que le chemin commence bien par "/static/"
-		if !strings.HasPrefix(r.URL.Path, "/static/") {
-			http.NotFound(w, r)
-			return
-		}
-
-		// Utilisation de http.StripPrefix pour servir les fichiers statiques
-		http.StripPrefix("/static/", fs).ServeHTTP(w, r)
+		http.StripPrefix("/static/", http.FileServer(http.Dir("./web/static"))).ServeHTTP(w, r)
 	}
 }
 
 func (s *server) home() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Vérification de la méthode HTTP
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Récupération de l'utilisateur actuel s'il existe
+		// Get current user if exists
 		var user *model.User
 		if sessionCookie, err := r.Cookie("session_uuid"); err == nil {
 			session, err := s.store.Session().GetByUUID(sessionCookie.Value)
@@ -235,7 +157,7 @@ func (s *server) home() http.HandlerFunc {
 			}
 		}
 
-		// Récupération de tous les posts
+		// Fetching all posts.
 		posts, err := s.store.Post().GetAll()
 		if err != nil {
 			s.logger.Println("error fetching posts:", err)
@@ -243,46 +165,35 @@ func (s *server) home() http.HandlerFunc {
 			return
 		}
 
-		// Récupération des informations complémentaires pour chaque post
 		for _, post := range posts {
-			// Récupération de l'utilisateur qui a créé le post
-			fetchedUser, err := s.store.User().GetByUUID(post.UserID)
-			if err != nil {
-				s.logger.Printf("error fetching user for post %s: %v\n", post.ID, err)
-				http.Error(w, "error fetching post user", http.StatusInternalServerError)
-				return
-			}
+			// Fetch user who created the post
+			fetchedUser, _ := s.store.User().GetByUUID(post.UserID)
 			post.User = fetchedUser
 
-			// Récupération des catégories pour chaque post
+			// Fetch categories for each post
 			categories, err := s.store.Post().GetCategories(post.ID)
 			if err != nil {
-				s.logger.Printf("error fetching categories for post %s: %v\n", post.ID, err)
+				s.logger.Println("error fetching categories for post:", err)
 				http.Error(w, "error fetching post categories", http.StatusInternalServerError)
 				return
 			}
 			post.Categories = categories
 
-			// Récupération des commentaires avec réactions pour chaque post
+			// Fetch comments with reactions for each post using the updated repository method
 			comments, err := s.store.Comment().GetCommentsWithReactionsByPostID(post.ID)
 			if err != nil {
-				s.logger.Printf("error fetching comments for post %s: %v\n", post.ID, err)
+				s.logger.Println("error fetching comments for post:", err)
 				http.Error(w, "error fetching post comments", http.StatusInternalServerError)
 				return
 			}
 			for _, comment := range comments {
-				fetchedUser, err := s.store.User().GetByUUID(comment.UserID)
-				if err != nil {
-					s.logger.Printf("error fetching user for comment %s: %v\n", comment.ID, err)
-					http.Error(w, "error fetching comment user", http.StatusInternalServerError)
-					return
-				}
+				fetchedUser, _ := s.store.User().GetByUUID(comment.UserID)
 				comment.User = fetchedUser
 			}
 			post.Comments = comments
 		}
 
-		// Récupération de toutes les catégories
+		// Fetching all categories.
 		allCategories, err := s.store.Category().GetAll()
 		if err != nil {
 			s.logger.Println("error fetching categories:", err)
@@ -290,58 +201,36 @@ func (s *server) home() http.HandlerFunc {
 			return
 		}
 
-		// Création des données à passer au template
+		// Struct to pass into template.
 		data := &model.PageData{
 			User:       user,
 			Posts:      posts,
 			Categories: allCategories,
 		}
 
-		// Exécution du template avec les données
 		execTmpl(w, templates.Lookup("main.html"), data)
 	}
 }
 
+// execTmpl renders a template with the given data or returns an internal server error.
 func execTmpl(w http.ResponseWriter, tmpl *template.Template, data interface{}) {
-	// Utilisation de Recover pour capturer les paniques potentielles lors de l'exécution du template
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("Panic recovered in execTmpl:", r)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		}
-	}()
-
-	// Exécution du template et gestion des erreurs
-	err := tmpl.Execute(w, data)
-	if err != nil {
+	if err := tmpl.Execute(w, data); err != nil {
 		log.Println("Error executing template:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
-
 func (s *server) createPostPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Vérification de la méthode HTTP
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Récupération de toutes les catégories
 		categories, err := s.store.Category().GetAll()
 		if err != nil {
-			s.logger.Println("Failed to load categories:", err)
 			http.Error(w, "Failed to load categories", http.StatusInternalServerError)
 			return
 		}
 
-		// Gestion des erreurs basée sur les paramètres d'URL
 		errMsg := ""
 		if errParam := r.URL.Query().Get("error"); errParam == "atleast_one_category_required" {
 			errMsg = "At least one category must be selected."
 		}
 
-		// Données à passer au template
 		data := struct {
 			Categories   []*model.Category
 			ErrorMessage string
@@ -350,9 +239,7 @@ func (s *server) createPostPage() http.HandlerFunc {
 			ErrorMessage: errMsg,
 		}
 
-		// Exécution du template avec les données
 		if err := templates.Lookup("createPostPage.html").Execute(w, data); err != nil {
-			s.logger.Println("Failed to execute template:", err)
 			http.Error(w, "Failed to execute template", http.StatusInternalServerError)
 		}
 	}
@@ -360,152 +247,112 @@ func (s *server) createPostPage() http.HandlerFunc {
 
 func (s *server) createPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Vérification de la méthode HTTP
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Récupération du cookie de session
+		// Get session cookie
 		sessionCookie, err := r.Cookie("session_uuid")
 		if err != nil {
 			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
 			return
 		}
 
-		// Récupération de la session
+		// Fetch the session
 		session, err := s.store.Session().GetByUUID(sessionCookie.Value)
 		if err != nil {
 			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
 			return
 		}
 
-		// Récupération de l'UUID de l'utilisateur à partir de la session
+		// Get the user UUID from session
 		userUUID := session.UserUUID
 
-		// Récupération des données du formulaire
 		subject := r.FormValue("postTitle")
 		content := r.FormValue("postText")
 
-		// Analyse du formulaire pour les cases à cocher des catégories
+		// Parse form for category checkboxes
 		r.ParseForm()
 		categoryIDs := r.PostForm["categoryIDs"]
 
-		// Validation des catégories du post
+		// validation for post category
 		if len(categoryIDs) == 0 {
 			http.Redirect(w, r, "/createPostPage?error=atleast_one_category_required", http.StatusSeeOther)
 			return
 		}
 
-		// Création du post
 		post, err := model.NewPost(userUUID, subject, content)
 		if err != nil {
-			s.logger.Println("NewPost() error:", err)
+			s.logger.Println("NewPost() error: ", err)
 			http.Redirect(w, r, "/createPostPage", http.StatusSeeOther)
 			return
 		}
 
-		// Enregistrement du post dans la base de données
 		if err = s.store.Post().Create(post); err != nil {
-			s.logger.Println("Create() error:", err)
+			s.logger.Println("Create() error: ", err)
 			http.Redirect(w, r, "/createPostPage", http.StatusSeeOther)
 			return
 		}
 
-		// Ajout des catégories au post
+		// add the category to the post
 		for _, categoryIDStr := range categoryIDs {
 			categoryID, err := strconv.Atoi(categoryIDStr)
 			if err != nil {
-				s.logger.Println("Error converting categoryID to int:", err)
+				s.logger.Println("Error converting categoryID to int: ", err)
 				http.Redirect(w, r, "/createPostPage", http.StatusSeeOther)
 				return
 			}
 
 			if err := s.store.Post().AddCategoryToPost(post.ID, categoryID); err != nil {
-				s.logger.Println("Error adding category to post:", err)
+				s.logger.Println("Error adding category to post: ", err)
 				http.Redirect(w, r, "/createPostPage", http.StatusSeeOther)
 				return
 			}
 		}
 
-		// Redirection vers la page d'accueil après la création réussie du post
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
 
 func (s *server) createCategoryPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Vérification de la méthode HTTP
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Initialisation du message d'erreur
-		var errorMessage string
+		errorMessage := ""
 		switch r.URL.Query().Get("error") {
 		case "checkError":
 			errorMessage = "Failed to check category existence."
 		case "categoryExists":
 			errorMessage = "This category already exists."
 		}
-
-		// Préparation des données à passer au template
-		data := map[string]string{"ErrorMessage": errorMessage}
-
-		// Exécution du template
-		execTmpl(w, templates.Lookup("createCategory.html"), data)
+		execTmpl(w, templates.Lookup("createCategory.html"), map[string]string{"ErrorMessage": errorMessage})
 	}
 }
 
 func (s *server) createCategory() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Vérification de la méthode HTTP
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Récupération du nom de la catégorie depuis le formulaire
 		categoryName := r.FormValue("categoryName")
-
-		// Vérification si la catégorie existe déjà
 		exists, err := s.store.Category().Exists(categoryName)
 		if err != nil {
-			s.logger.Println("Check category existence error:", err)
+			s.logger.Println("Check category existence error: ", err)
 			http.Redirect(w, r, "/createCategoryPage?error=checkError", http.StatusSeeOther)
 			return
 		}
 
-		// Si la catégorie existe déjà, rediriger avec un message d'erreur
 		if exists {
-			s.logger.Println("Category already exists:", categoryName)
+			s.logger.Println("Category already exists: ", categoryName)
 			http.Redirect(w, r, "/createCategoryPage?error=categoryExists", http.StatusSeeOther)
 			return
 		}
 
-		// Création de la nouvelle catégorie
 		category := &model.Category{Name: categoryName}
 		if err := s.store.Category().Create(category); err != nil {
-			s.logger.Println("Create category error:", err)
+			s.logger.Println("Create category error: ", err)
 			http.Redirect(w, r, "/createCategoryPage", http.StatusSeeOther)
 			return
 		}
 
-		// Redirection vers la page d'accueil après la création réussie de la catégorie
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
 
 func (s *server) categoryPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Vérification de la méthode HTTP
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Récupération de l'utilisateur actuel s'il existe
+		// Get current user if exists
 		var user *model.User
 		if sessionCookie, err := r.Cookie("session_uuid"); err == nil {
 			session, err := s.store.Session().GetByUUID(sessionCookie.Value)
@@ -514,7 +361,6 @@ func (s *server) categoryPosts() http.HandlerFunc {
 			}
 		}
 
-		// Récupération de l'ID de catégorie depuis l'URL
 		categoryIDStr := strings.TrimPrefix(r.URL.Path, "/category/")
 		categoryID, err := strconv.Atoi(categoryIDStr)
 		if err != nil {
@@ -523,142 +369,121 @@ func (s *server) categoryPosts() http.HandlerFunc {
 			return
 		}
 
-		// Récupération de tous les posts dans la catégorie spécifiée
+		// Get all posts in the category.
 		posts, err := s.store.Post().GetByCategory(categoryID)
 		if err != nil {
 			s.logger.Println("Error fetching posts:", err)
-			http.Error(w, "Error fetching posts by category", http.StatusInternalServerError)
+			http.Error(w, "error fetching posts by category", http.StatusInternalServerError)
 			return
 		}
 
-		// Pour chaque post, enrichir les données
 		for _, post := range posts {
-			// Récupération de l'utilisateur qui a créé le post
-			fetchedUser, err := s.store.User().GetByUUID(post.UserID)
-			if err != nil {
-				s.logger.Printf("Error fetching user for post %s: %v\n", post.ID, err)
-				continue // Passer au post suivant en cas d'erreur
-			}
+			// Fetch user who created the post
+			fetchedUser, _ := s.store.User().GetByUUID(post.UserID)
 			post.User = fetchedUser
 
-			// Récupération des catégories associées à chaque post
+			// Fetch categories for each post
 			categories, err := s.store.Post().GetCategories(post.ID)
 			if err != nil {
-				s.logger.Printf("Error fetching categories for post %s: %v\n", post.ID, err)
-				continue // Passer au post suivant en cas d'erreur
+				s.logger.Println("error fetching categories for post:", err)
+				http.Error(w, "error fetching post categories", http.StatusInternalServerError)
+				return
 			}
 			post.Categories = categories
 
-			// Récupération des commentaires avec réactions pour chaque post
+			// Fetch comments with reactions for each post using the updated repository method
 			commentsWithReactions, err := s.store.Comment().GetCommentsWithReactionsByPostID(post.ID)
 			if err != nil {
-				s.logger.Printf("Error fetching comments with reactions for post %s: %v\n", post.ID, err)
-				continue // Passer au post suivant en cas d'erreur
+				s.logger.Println("error fetching comments with reactions for post:", err)
+				http.Error(w, "error fetching post comments with reactions", http.StatusInternalServerError)
+				return
 			}
 			for _, comment := range commentsWithReactions {
-				// Récupération de l'utilisateur qui a créé le commentaire
-				fetchedUser, err := s.store.User().GetByUUID(comment.UserID)
-				if err != nil {
-					s.logger.Printf("Error fetching user for comment %s: %v\n", comment.ID, err)
-					continue // Passer au commentaire suivant en cas d'erreur
-				}
+				// Fetch user who created the comment
+				fetchedUser, _ := s.store.User().GetByUUID(comment.UserID)
 				comment.User = fetchedUser
 			}
+
 			post.Comments = commentsWithReactions
 		}
 
-		// Récupération de toutes les catégories sauf celle actuellement utilisée
+		// Fetch all categories except currently used
 		allCategories, err := s.store.Category().GetAll()
 		if err != nil {
 			s.logger.Println("Error fetching categories:", err)
-			http.Error(w, "Error fetching all categories", http.StatusInternalServerError)
+			http.Error(w, "error fetching all categories", http.StatusInternalServerError)
 			return
 		}
 
-		// Préparation des données à passer au template
+		// Pass data to template
 		data := &model.PageData{
 			User:       user,
 			Posts:      posts,
 			Categories: allCategories,
 		}
 
-		// Exécution du template avec les données
 		execTmpl(w, templates.Lookup("home.html"), data)
 	}
 }
 
 func (s *server) registerHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Récupération des données du formulaire
 		userName := r.FormValue("username")
 		password := r.FormValue("password")
 		email := r.FormValue("email")
 
-		// Vérification que tous les champs sont remplis
 		if userName == "" || password == "" || email == "" {
 			data := struct {
 				ErrorMsg string
 			}{
 				ErrorMsg: "All fields must be provided",
 			}
-			execTmpl(w, templates.Lookup("registerPage.html"), data)
+			execTmpl(w, templates.Lookup("/registerPage.html"), data)
 			return
 		}
 
-		// Vérification si l'utilisateur existe déjà
 		err := s.store.User().ExistingUser(userName, email)
 		if err != nil {
-			s.logger.Println("ExistingUser() error:", err)
+			s.logger.Println("redirect - error:", err)
 			data := struct {
 				UserExistsErrorMsg string
 			}{
 				UserExistsErrorMsg: "User already exists in the system",
 			}
-			execTmpl(w, templates.Lookup("registerPage.html"), data)
+			execTmpl(w, templates.Lookup("/registerPage.html"), data)
 			return
 		}
 
-		// Création d'un nouvel utilisateur
 		user, err := model.NewUser(userName, email, password)
 		if err != nil {
-			s.logger.Println("NewUser() error:", err)
+			s.logger.Println("NewUser() error: ", err)
 			http.Redirect(w, r, "/registerPage", http.StatusSeeOther)
 			return
 		}
 
-		// Enregistrement de l'utilisateur dans la base de données
 		if err = s.store.User().Register(user); err != nil {
-			s.logger.Println("Register() error:", err)
+			s.logger.Println("Register() error: ", err)
 			http.Redirect(w, r, "/registerPage", http.StatusSeeOther)
 			return
 		}
 
-		// Création d'une nouvelle session pour l'utilisateur
+		// Create a new session for the user
 		session, err := model.NewSession(user.UUID)
 		if err != nil {
-			s.logger.Println("NewSession() error:", err)
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
+			http.Error(w, "failed to create session", http.StatusInternalServerError)
 			return
 		}
-
-		// Stockage de la session dans la base de données
 		if err := s.store.Session().Create(session); err != nil {
-			s.logger.Println("Create() error:", err)
-			http.Error(w, "Failed to store session", http.StatusInternalServerError)
+			http.Error(w, "failed to store session", http.StatusInternalServerError)
 			return
 		}
 
-		// Définition d'un cookie pour la session
-		cookie := &http.Cookie{
-			Name:     "session_uuid",
-			Value:    session.SessionID,
-			Expires:  session.ExpiresAt,
-			HttpOnly: true,
-			Secure:   false, // Mettre à true si vous utilisez HTTPS
-		}
+		// Set a cookie for the session
+		cookie := &http.Cookie{Name: "session_uuid", Value: session.SessionID,
+			Expires: session.ExpiresAt, HttpOnly: true}
 		http.SetCookie(w, cookie)
 
-		// Redirection de l'utilisateur vers son profil
+		// Redirect the user to the their profile
 		http.Redirect(w, r, "/home", http.StatusSeeOther)
 	}
 }
@@ -687,37 +512,29 @@ func (s *server) serveUserProfile() http.HandlerFunc {
 		}
 
 		// Render template with user data
-		data := struct {
-			User *model.User
-		}{
-			User: user,
-		}
-		execTmpl(w, templates.Lookup("userProfilePage.html"), data)
+		execTmpl(w, templates.Lookup("userProfilePage.html"), user)
 	}
 }
 
 func (s *server) logout() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Retrieve session cookie
-		sessionCookie, err := r.Cookie("session_uuid")
+		session, err := r.Cookie("session_uuid")
 		if err != nil {
-			// If session cookie is not found, redirect to login page
 			http.Redirect(w, r, "/loginPage", http.StatusSeeOther)
 			return
 		}
 
-		// Delete the session from the database
-		if err := s.store.Session().Delete(sessionCookie.Value); err != nil {
-			// If there's an error deleting the session, return internal server error
+		// Delete the session from the DB
+		err = s.store.Session().Delete(session.Value)
+		if err != nil {
 			http.Error(w, "Failed to end session", http.StatusInternalServerError)
 			return
 		}
 
-		// Expire the session cookie immediately by setting MaxAge to -1
-		sessionCookie.MaxAge = -1
-		http.SetCookie(w, sessionCookie)
+		// Delete the session cookie
+		session.MaxAge = -1
+		http.SetCookie(w, session)
 
-		// Redirect the user to the home page after logout
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
@@ -743,34 +560,184 @@ func (s *server) createComment() http.HandlerFunc {
 
 		// Get post ID from form
 		postID := r.FormValue("postID")
-		if postID == "" {
-			http.Error(w, "Post ID is required", http.StatusBadRequest)
-			return
-		}
 
 		// Get comment text from form
 		commentTxt := r.FormValue("commentText")
-		if commentTxt == "" {
-			http.Error(w, "Comment text is required", http.StatusBadRequest)
-			return
-		}
 
 		// Create new comment
 		comment, err := model.NewComment(postID, userUUID, commentTxt)
 		if err != nil {
 			s.logger.Println("NewComment() error: ", err)
-			http.Error(w, "Failed to create comment", http.StatusInternalServerError)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 
 		// Save the comment
 		if err = s.store.Comment().Create(comment); err != nil {
 			s.logger.Println("CreateComment() error: ", err)
-			http.Error(w, "Failed to save comment", http.StatusInternalServerError)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 
 		// Redirect back to homepage
 		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
+
+func (s *server) handleCreatePostReaction() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Error parsing form", http.StatusBadRequest)
+			return
+		}
+		sessionCookie, err := r.Cookie("session_uuid")
+		if err != nil {
+			http.Error(w, "Session error", http.StatusBadRequest)
+			return
+		}
+		session, err := s.store.Session().GetByUUID(sessionCookie.Value)
+		if err != nil {
+			http.Error(w, "Session retrieval error", http.StatusInternalServerError)
+			return
+		}
+		userUUID := session.UserUUID
+		postID := r.FormValue("postID")
+		reactionTypeStr := r.FormValue("reactionType")
+
+		var reactionID int
+		switch reactionTypeStr {
+		case "like":
+			reactionID = 1
+		case "dislike":
+			reactionID = 2
+		default:
+			http.Error(w, "Invalid reaction type", http.StatusBadRequest)
+			return
+		}
+
+		existingReaction, err := s.store.Reaction().GetUserPostReaction(userUUID, postID)
+		if err != nil && err != sql.ErrNoRows {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
+		if existingReaction != nil {
+			if existingReaction.ReactionID == reactionID {
+				if err := s.store.Reaction().DeletePostReaction(userUUID, postID); err != nil {
+					http.Error(w, "Failed to delete reaction", http.StatusInternalServerError)
+					return
+				}
+			} else {
+				if err := s.store.Reaction().DeletePostReaction(userUUID, postID); err != nil {
+					http.Error(w, "Failed to delete existing reaction", http.StatusInternalServerError)
+					return
+				}
+
+				reaction := &model.Reaction{
+					UserID:     userUUID,
+					PostID:     postID,
+					ReactionID: reactionID,
+				}
+				if err := s.store.Reaction().CreatePostReaction(reaction); err != nil {
+					http.Error(w, "Failed to create reaction", http.StatusInternalServerError)
+					return
+				}
+			}
+		} else {
+			reaction := &model.Reaction{
+				UserID:     userUUID,
+				PostID:     postID,
+				ReactionID: reactionID,
+			}
+			if err := s.store.Reaction().CreatePostReaction(reaction); err != nil {
+				http.Error(w, "Failed to create reaction", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		http.Redirect(w, r, "/home?postID="+postID, http.StatusSeeOther)
+	}
+}
+
+func (s *server) handleCreateCommentReaction() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Error parsing form", http.StatusBadRequest)
+			return
+		}
+
+		sessionCookie, err := r.Cookie("session_uuid")
+		if err != nil {
+			http.Error(w, "Session error", http.StatusBadRequest)
+			return
+		}
+
+		session, err := s.store.Session().GetByUUID(sessionCookie.Value)
+		if err != nil {
+			http.Error(w, "Session retrieval error", http.StatusInternalServerError)
+			return
+		}
+
+		userUUID := session.UserUUID
+		commentID := r.FormValue("commentID")
+		reactionTypeStr := r.FormValue("reactionType")
+
+		var reactionID int
+		switch reactionTypeStr {
+		case "like":
+			reactionID = 1
+		case "dislike":
+			reactionID = 2
+		default:
+			http.Error(w, "Invalid reaction type", http.StatusBadRequest)
+			return
+		}
+
+		existingReaction, err := s.store.Reaction().GetUserCommentReaction(userUUID, commentID)
+		if err != nil && err != sql.ErrNoRows {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
+		if existingReaction != nil {
+			if existingReaction.ReactionID == reactionID {
+				if err := s.store.Reaction().DeleteCommentReaction(userUUID, commentID); err != nil {
+					http.Error(w, "Failed to delete reaction", http.StatusInternalServerError)
+					return
+				}
+			} else {
+				if err := s.store.Reaction().DeleteCommentReaction(userUUID, commentID); err != nil {
+					http.Error(w, "Failed to delete existing reaction", http.StatusInternalServerError)
+					return
+				}
+
+				reaction := &model.Reaction{
+					UserID:     userUUID,
+					CommentID:  commentID,
+					ReactionID: reactionID,
+				}
+				if err := s.store.Reaction().CreateCommentReaction(reaction); err != nil {
+					http.Error(w, "Failed to create reaction", http.StatusInternalServerError)
+					return
+				}
+			}
+		} else {
+			reaction := &model.Reaction{
+				UserID:     userUUID,
+				CommentID:  commentID,
+				ReactionID: reactionID,
+			}
+			if err := s.store.Reaction().CreateCommentReaction(reaction); err != nil {
+				http.Error(w, "Failed to create reaction", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// Redirect to referer or to a default route if not available
+		referer := r.Header.Get("Referer")
+		if referer == "" {
+			referer = "/home"
+		}
+		http.Redirect(w, r, referer, http.StatusSeeOther)
 	}
 }

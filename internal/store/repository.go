@@ -1,6 +1,6 @@
 package store
 
-import "Forum/internal/model"
+import "SPORTALK/internal/model"
 
 type UserRepository interface {
 	ExistingUser(userName, email string) error

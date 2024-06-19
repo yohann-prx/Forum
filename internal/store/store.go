@@ -1,6 +1,6 @@
 package store
 
-import "Forum/internal/model"
+import "SPORTALK/internal/model"
 
 type Store interface {
 	User() UserRepository
