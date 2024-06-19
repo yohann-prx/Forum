@@ -1,11 +1,91 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+    <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link href="/static/bootstrap.css" rel="stylesheet">
+  <link type="text/css" rel="stylesheet" href="/static/main.css">
+  <title>Post</title>
 </head>
 <body>
-  
+<nav class="navbar sticky-top navbar-expand-lg text-body-tertiary mb-5" style="background-color: #66BB6A">
+  <div class="container-fluid">
+    <a href="#" class="navbar-brand">Forum</a>
+    <div class="d-flex">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <div class="nav-item dropdown">
+              <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">Categories</a>
+              <ul class="dropdown-menu">
+                <li><a href="#" class="dropdown-item">Category 1</a></li>
+                <li><a href="#" class="dropdown-item">Category 2</a></li>
+                <li><a href="#" class="dropdown-item">Category 3</a></li>
+                <li><a href="#" class="dropdown-item">Category 4</a></li>
+                <li><a href="#" class="dropdown-item">Category 5</a></li>
+                <li><a href="#" class="dropdown-item">Category 6</a></li>
+              </ul>
+            </div>
+          </li>
+          <li class="nav-item">
+            <a href="createPost.html" class="nav-link">Create a Post</a>
+          </li>
+          <li class="nav-item">
+            <a href="" class="nav-link">username</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</nav>
+<main>
+  <div class="container">
+    <div class="card mb-2 container-fluid">
+      <div class="card-header row">
+        <h3 class="card-title col-10">Post</h3>
+        <input class="btn btn-primary col-1" type="button" value="Like">
+        <input class="btn btn-danger col-1" type="button" value="Dislike">
+      </div>
+      <div class="card-body">
+        <p class="card-text">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Alias aspernatur corporis culpa eaque, error, eveniet explicabo fuga id illum impedit laborum molestias natus, nulla odit pariatur perspiciatis qui saepe temporibus. Lorem ipsum dolor sit amet, consectetur adipisicing elit. Accusamus assumenda blanditiis cumque cupiditate dolor et excepturi iure laboriosam laborum minima officiis, praesentium quaerat quia quis quos repellat sint sit voluptatem.</p>
+      </div>
+      <div class="card-footer row">
+        <span class="badge text-bg-secondary col-1 m-1">Category 1</span>
+        <span class="badge text-bg-secondary col-1 m-1">Category 6</span>
+        <span class="badge text-bg-secondary col-1 m-1">Category 4</span>
+      </div>
+    </div>
+    <div class="card">
+     <div class="card-header">
+       <div class="card-title">
+         <h5 class="card-title">Comments</h5>
+       </div>
+     </div>
+      <div class="card-body">
+        <div class="card container-fluid mb-1">
+          <div class="card-header row">
+            <h6 class="card-title col-10">Username</h6>
+            <input class="btn btn-primary btn-sm col-1" type="button" value="Like">
+            <input class="btn btn-danger btn-sm col-1" type="button" value="Dislike">
+          </div>
+          <div class="card-body">
+            <p class="card-text">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Ab fugiat id nobis obcaecati officia soluta.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<footer class="navbar sticky-bottom bg-body-secondary">
+  <div class="container-fluid">
+    © 2024 Evgeny, Mati, Jegor, Peep
+  </div>
+</footer>
+<script src="/static/bootstrap.js"></script>
+<script src="/static/bootstrap.bundle.js"></script>
 </body>
 </html>
