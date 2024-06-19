@@ -2,10 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Forum</title>
 </head>
 <body>
-    
+    <h1>Forum</h1>
+    {{range .}}
+    <div>
+        <h2><a href="/post/{{.ID}}">{{.Title}}</a></h2>
+        <p>{{.Content}}</p>
+        <p>Likes: {{.Likes}} Dislikes: {{.Dislikes}}</p>
+        <form action="/post/like/{{.ID}}" method="post">
+            <button type="submit">Like</button>
+        </form>
+        <form action="/post/dislike/{{.ID}}" method="post">
+            <button type="submit">Dislike</button>
+        </form>
+    </div>
+    {{end}}
 </body>
 </html>
