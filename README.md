@@ -21,3 +21,6 @@ Ouvrez votre navigateur et cliquez sur ce lien :
 ```sh
 http://localhost:8080/
 ```
+
+## Lien de la présentation
+https://www.canva.com/design/DAGIhHwPMjc/4Ai268W6lOY9icMyp6XJeg/edit?utm_content=DAGIhHwPMjc&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
