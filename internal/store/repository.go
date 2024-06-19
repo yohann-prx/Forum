@@ -2,6 +2,7 @@ package store
 
 import "SPORTALK/internal/model"
 
+// Store is the interface that wraps the methods of the store
 type UserRepository interface {
 	ExistingUser(userName, email string) error
 	Login(user *model.User) error
@@ -9,6 +10,7 @@ type UserRepository interface {
 	GetByUUID(uuid string) (*model.User, error)
 }
 
+// Store is the interface that wraps the methods of the store
 type PostRepository interface {
 	Create(post *model.Post) error
 	GetAll() ([]*model.Post, error)
@@ -16,12 +18,15 @@ type PostRepository interface {
 	GetCategories(postID string) ([]*model.Category, error)
 	GetByCategory(categoryID int) ([]*model.Post, error)
 }
+
+// Store is the interface that wraps the methods of the store
 type CommentRepository interface {
 	Create(c *model.Comment) error
 	GetByPostID(postID string) ([]*model.Comment, error)
 	GetCommentsWithReactionsByPostID(postID string) ([]*model.Comment, error)
 }
 
+// Store is the interface that wraps the methods of the store
 type ReactionRepository interface {
 	CreatePostReaction(reaction *model.Reaction) error
 	DeletePostReaction(userID, postID string) error

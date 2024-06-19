@@ -13,6 +13,7 @@ type server struct {
 	logger *log.Logger
 }
 
+// NewServer creates a new server
 func NewServer(store store.Store) *server {
 	return &server{
 		store:  store,
@@ -21,10 +22,12 @@ func NewServer(store store.Store) *server {
 	}
 }
 
+// ServeHTTP implements the http.Handler interface
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
 
+// HandlePaths handles the paths for the server
 func Start(con Config) error {
 	db, err := InitDB(con)
 	if err != nil {

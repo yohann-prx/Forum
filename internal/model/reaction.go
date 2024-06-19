@@ -15,6 +15,7 @@ type Reaction struct {
 	Type       ReactionType `json:"type"`
 }
 
+// NewReaction creates a new reaction
 func NewReaction(userID, postID, commentID string, reactionType ReactionType) *Reaction {
 	return &Reaction{
 		UserID:    userID,

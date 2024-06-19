@@ -12,6 +12,7 @@ import (
 
 var templates = template.Must(template.ParseGlob("./web/templates/*.html"))
 
+// HandlePaths handles the paths for the server
 func (s *server) HandlePaths() {
 	s.router.Handle("/static/", s.serveStatic())
 	s.router.HandleFunc("/", s.home())
@@ -31,12 +32,14 @@ func (s *server) HandlePaths() {
 	s.router.HandleFunc("/reactComment", s.handleCreateCommentReaction())
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) registerPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		execTmpl(w, templates.Lookup("registerPage.html"), nil)
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) saveRegister() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := model.RegisterPageData{}
@@ -80,6 +83,8 @@ func (s *server) saveRegister() http.HandlerFunc {
 		execTmpl(w, templates.Lookup("main.html"), nil)
 	}
 }
+
+// HandlePaths handles the paths for the server
 func (s *server) loginPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		errorMessage := ""
@@ -91,6 +96,7 @@ func (s *server) loginPage() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) login() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.logger.Println("@ login page")
@@ -140,12 +146,14 @@ func (s *server) login() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) serveStatic() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.StripPrefix("/static/", http.FileServer(http.Dir("./web/static"))).ServeHTTP(w, r)
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) home() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get current user if exists
@@ -218,6 +226,8 @@ func execTmpl(w http.ResponseWriter, tmpl *template.Template, data interface{}) 
 		log.Println("Error executing template:", err)
 	}
 }
+
+// HandlePaths handles the paths for the server
 func (s *server) createPostPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		categories, err := s.store.Category().GetAll()
@@ -245,6 +255,7 @@ func (s *server) createPostPage() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) createPost() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get session cookie
@@ -310,6 +321,7 @@ func (s *server) createPost() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) createCategoryPage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		errorMessage := ""
@@ -323,6 +335,7 @@ func (s *server) createCategoryPage() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) createCategory() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		categoryName := r.FormValue("categoryName")
@@ -350,6 +363,7 @@ func (s *server) createCategory() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) categoryPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get current user if exists
@@ -426,6 +440,7 @@ func (s *server) categoryPosts() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) registerHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userName := r.FormValue("username")
@@ -488,6 +503,7 @@ func (s *server) registerHandler() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) serveUserProfile() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract session cookie
@@ -516,6 +532,7 @@ func (s *server) serveUserProfile() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) logout() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, err := r.Cookie("session_uuid")
@@ -539,6 +556,7 @@ func (s *server) logout() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) createComment() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get session cookie
@@ -584,6 +602,7 @@ func (s *server) createComment() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) handleCreatePostReaction() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
@@ -659,6 +678,7 @@ func (s *server) handleCreatePostReaction() http.HandlerFunc {
 	}
 }
 
+// HandlePaths handles the paths for the server
 func (s *server) handleCreateCommentReaction() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {

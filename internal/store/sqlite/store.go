@@ -18,6 +18,7 @@ type Store struct {
 	reactionRepo       *ReactionRepository
 }
 
+// SessionRepository returns a new instance of SessionRepository
 func (s *Store) Session() store.SessionRepository {
 	if s.sessionRepository != nil {
 		return s.sessionRepository
@@ -30,6 +31,7 @@ func (s *Store) Session() store.SessionRepository {
 	return s.sessionRepository
 }
 
+// CategoryRepository returns a new instance of CategoryRepository
 func (s *Store) Category() store.CategoryRepository {
 	if s.categoryRepository != nil {
 		return s.categoryRepository
@@ -42,6 +44,7 @@ func (s *Store) Category() store.CategoryRepository {
 	return s.categoryRepository
 }
 
+// Reaction returns a new instance of ReactionRepository
 func (s *Store) Reaction() store.ReactionRepository {
 	if s.reactionRepo != nil {
 		return s.reactionRepo
@@ -51,6 +54,7 @@ func (s *Store) Reaction() store.ReactionRepository {
 	return s.reactionRepo
 }
 
+// PostRepository returns a new instance of PostRepository
 func (s *Store) Post() store.PostRepository {
 	if s.postRepository != nil {
 		return s.postRepository
@@ -63,6 +67,7 @@ func (s *Store) Post() store.PostRepository {
 	return s.postRepository
 }
 
+// User returns a new instance of UserRepository
 func (s *Store) User() store.UserRepository {
 	if s.userRepository != nil {
 		return s.userRepository
@@ -75,12 +80,14 @@ func (s *Store) User() store.UserRepository {
 	return s.userRepository
 }
 
+// NewSQL returns a new instance of Store
 func NewSQL(db *sql.DB) *Store {
 	return &Store{
 		Db: db,
 	}
 }
 
+// PostRepository is a struct that represents the post repository
 func (r *PostRepository) Create(post *model.Post) error {
 	// Insert the post first
 	queryInsert := "INSERT INTO posts(id, user_UUID, subject, content, created_at) VALUES(?, ?, ?, ?, ?)"
@@ -99,6 +106,7 @@ func (r *PostRepository) Create(post *model.Post) error {
 	return nil
 }
 
+// PostRepository is a struct that represents the post repository
 func (s *Store) Comment() store.CommentRepository {
 	if s.commentRepository == nil {
 		s.commentRepository = &CommentRepository{

@@ -12,6 +12,7 @@ type UserRepository struct {
 	store *Store
 }
 
+// Checks if a user already exists in the database
 func (r *UserRepository) ExistingUser(userName, email string) error {
 	queryEmail := "SELECT * FROM users WHERE email = ?"
 	rows, err := r.store.Db.Query(queryEmail, email)
@@ -38,6 +39,7 @@ func (r *UserRepository) ExistingUser(userName, email string) error {
 	return nil
 }
 
+// Login checks if the user exists in the database
 func (r *UserRepository) Login(user *model.User) error {
 	var hashedPassword string
 	err := r.store.Db.QueryRow("SELECT UUID, email, username, password FROM users WHERE email = ?", user.Email).Scan(&user.UUID, &user.Email, &user.UserName, &hashedPassword)
@@ -51,6 +53,7 @@ func (r *UserRepository) Login(user *model.User) error {
 	return nil
 }
 
+// Register a new user
 func (r *UserRepository) Register(user *model.User) error {
 	queryInsert := "INSERT INTO users(UUID, email, username, password) VALUES(?, ?, ?, ?) "
 	_, err := r.store.Db.Exec(queryInsert, user.UUID, user.Email, user.UserName, user.Password)

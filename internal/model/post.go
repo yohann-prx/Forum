@@ -2,8 +2,9 @@ package model
 
 import (
 	"database/sql"
-	"github.com/gofrs/uuid"
 	"time"
+
+	"github.com/gofrs/uuid"
 )
 
 type Post struct {
@@ -19,6 +20,7 @@ type Post struct {
 	DislikeCount int
 }
 
+// NewPost creates a new post
 func NewPost(userID, subject, content string) (*Post, error) {
 	id, err := uuid.NewV4()
 	if err != nil {
