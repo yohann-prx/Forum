@@ -1,8 +1,11 @@
 package model
 
-import "time"
+import (
+	"time"
 
-// Comment represents a comment in the system.
+	"github.com/gofrs/uuid"
+)
+
 type Comment struct {
 	ID           string
 	PostID       string
@@ -12,4 +15,19 @@ type Comment struct {
 	CreatedAt    time.Time
 	LikeCount    int
 	DislikeCount int
+}
+
+func NewComment(postID, userUUID, content string) (*Comment, error) {
+	// Create a new UUID for the comment
+	id, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
+	return &Comment{
+		ID:        id.String(),
+		PostID:    postID,
+		UserID:    userUUID,
+		Content:   content,
+		CreatedAt: time.Now(),
+	}, nil
 }
