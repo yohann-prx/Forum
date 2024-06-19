@@ -865,3 +865,97 @@ func (s *server) handleCreatePostReaction() http.HandlerFunc {
 		http.Redirect(w, r, "/home?postID="+postID, http.StatusSeeOther)
 	}
 }
+
+func (s *server) handleCreateCommentReaction() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Error parsing form", http.StatusBadRequest)
+			return
+		}
+
+		// Retrieve session cookie
+		sessionCookie, err := r.Cookie("session_uuid")
+		if err != nil {
+			http.Error(w, "Session error", http.StatusBadRequest)
+			return
+		}
+
+		// Fetch the session
+		session, err := s.store.Session().GetByUUID(sessionCookie.Value)
+		if err != nil {
+			http.Error(w, "Session retrieval error", http.StatusInternalServerError)
+			return
+		}
+
+		// Extract user UUID from session
+		userUUID := session.UserUUID
+
+		// Get comment ID and reaction type from form
+		commentID := r.FormValue("commentID")
+		reactionTypeStr := r.FormValue("reactionType")
+
+		// Determine reaction ID based on reaction type
+		var reactionID int
+		switch reactionTypeStr {
+		case "like":
+			reactionID = 1
+		case "dislike":
+			reactionID = 2
+		default:
+			http.Error(w, "Invalid reaction type", http.StatusBadRequest)
+			return
+		}
+
+		// Check if the user has already reacted to the comment
+		existingReaction, err := s.store.Reaction().GetUserCommentReaction(userUUID, commentID)
+		if err != nil && err != sql.ErrNoRows {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
+		// Delete existing reaction if it exists and matches the new reaction type
+		if existingReaction != nil {
+			if existingReaction.ReactionID == reactionID {
+				if err := s.store.Reaction().DeleteCommentReaction(userUUID, commentID); err != nil {
+					http.Error(w, "Failed to delete reaction", http.StatusInternalServerError)
+					return
+				}
+			} else {
+				// Delete existing reaction before creating a new one
+				if err := s.store.Reaction().DeleteCommentReaction(userUUID, commentID); err != nil {
+					http.Error(w, "Failed to delete existing reaction", http.StatusInternalServerError)
+					return
+				}
+
+				// Create new reaction
+				reaction := &model.Reaction{
+					UserID:     userUUID,
+					CommentID:  commentID,
+					ReactionID: reactionID,
+				}
+				if err := s.store.Reaction().CreateCommentReaction(reaction); err != nil {
+					http.Error(w, "Failed to create reaction", http.StatusInternalServerError)
+					return
+				}
+			}
+		} else {
+			// Create new reaction if no existing reaction found
+			reaction := &model.Reaction{
+				UserID:     userUUID,
+				CommentID:  commentID,
+				ReactionID: reactionID,
+			}
+			if err := s.store.Reaction().CreateCommentReaction(reaction); err != nil {
+				http.Error(w, "Failed to create reaction", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// Redirect to referer or to a default route if not available
+		referer := r.Header.Get("Referer")
+		if referer == "" {
+			referer = "/home"
+		}
+		http.Redirect(w, r, referer, http.StatusSeeOther)
+	}
+}
