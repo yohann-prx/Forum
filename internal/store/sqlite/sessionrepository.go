@@ -16,6 +16,12 @@ func (r *SessionRepository) Create(s *model.Session) error {
 
 func (r *SessionRepository) GetByUUID(sessionID string) (*model.Session, error) {
 	var s model.Session
+	if err := r.store.Db.QueryRow(
+		"SELECT user_UUID, session_id, expires_at FROM sessions WHERE session_id = ?",
+		sessionID,
+	).Scan(&s.UserUUID, &s.SessionID, &s.ExpiresAt); err != nil {
+		return nil, err
+	}
 
 	return &s, nil
 }
