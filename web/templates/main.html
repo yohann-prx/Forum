@@ -35,6 +35,16 @@
                     </li>
                     <li class="nav-item">
                         {{if .User}}
+                        <a href="/createPostPage" class="nav-link">Create a Post</a>
+                        {{end}}
+                    </li>
+                    <li class="nav-item">
+                        {{if .User}}
+                        <a href="/createCategoryPage" class="nav-link">Create a Category</a>
+                        {{end}}
+                    </li>
+                    <li class="nav-item">
+                        {{if .User}}
                         <a href="/logout" class="nav-link">Logout ({{.User.UserName}})</a>
                         {{else}}
                         <a href="/loginPage" class="nav-link">Login</a>
@@ -97,6 +107,53 @@
                         {{ end }}
                     </div>
                 </div>
+            </div>
+            <!-- Comments Section -->
+            <div class="card-body">
+                <h6><i class="bi bi-chat-dots"></i> Comments:</h6>
+                {{ range $comment := $post.Comments }}
+                <div class="bg-light p-2 my-2 rounded">
+                    <div>
+                        <strong>{{ $comment.User.UserName }}</strong>: {{ $comment.Content }}
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        {{ if $.User }}
+                        <!-- Reaction Buttons for Comments -->
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Comment reactions">
+                            <form method="post" action="/reactComment" class="me-2 d-flex align-items-center">
+                                <input type="hidden" name="commentID" value="{{ $comment.ID }}">
+                                <input type="hidden" name="reactionType" value="like">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-hand-thumbs-up"></i><span class="ms-1">{{ $comment.LikeCount }}</span>
+                                </button>
+                            </form>
+                            <form method="post" action="/reactComment" class="d-flex align-items-center">
+                                <input type="hidden" name="commentID" value="{{ $comment.ID }}">
+                                <input type="hidden" name="reactionType" value="dislike">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="bi bi-hand-thumbs-down"></i><span class="ms-1">{{ $comment.DislikeCount }}</span>
+                                </button>
+                            </form>
+                        </div>
+                        {{ else }}
+                        <div class="text-muted small">
+                            <i class="bi bi-hand-thumbs-up"></i> {{ $comment.LikeCount }}
+                            <i class="bi bi-hand-thumbs-down ms-2"></i> {{ $comment.DislikeCount }}
+                            <span class="ms-1">Log in to react.</span>
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+                {{ end }}
+                {{ if $.User }}
+                <form method="post" action="/createComment" class="mt-3">
+                    <input type="hidden" name="postID" value="{{ $post.ID }}">
+                    <div class="mb-2">
+                        <textarea class="form-control" id="commentText" name="commentText" placeholder="Add a comment..." rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Post Comment</button>
+                </form>
+                {{ end }}
             </div>
         </div>
         {{ end }}
