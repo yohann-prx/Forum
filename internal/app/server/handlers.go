@@ -135,3 +135,61 @@ func (s *server) loginPage() http.HandlerFunc {
 		execTmpl(w, templates.Lookup("login.html"), data)
 	}
 }
+
+func (s *server) login() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Vérification de la méthode HTTP
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Récupération des valeurs du formulaire
+		email := r.FormValue("email")
+		password := r.FormValue("password")
+
+		// Création d'une instance utilisateur avec les informations de connexion
+		user := &model.User{
+			Email:    email,
+			Password: password,
+		}
+
+		// Authentification de l'utilisateur
+		err := s.store.User().Login(user)
+		if err != nil {
+			s.logger.Println("Login() error:", err)
+			// Redirection vers la page de connexion avec un message d'erreur approprié
+			http.Redirect(w, r, "/loginPage?error=notfound", http.StatusSeeOther)
+			return
+		}
+
+		// Création d'une nouvelle session pour l'utilisateur
+		session, err := model.NewSession(user.UUID)
+		if err != nil {
+			s.logger.Println("NewSession() error:", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		// Enregistrement de la session dans la base de données
+		err = s.store.Session().Create(session)
+		if err != nil {
+			s.logger.Println("CreateSession() error:", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		// Définition d'un cookie de session sécurisé
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_uuid",
+			Value:    session.SessionID,
+			Expires:  session.ExpiresAt,
+			HttpOnly: true,
+			Secure:   false, // Modifier à true si vous utilisez HTTPS
+			Path:     "/",
+		})
+
+		// Redirection de l'utilisateur vers sa page d'accueil
+		http.Redirect(w, r, "/home", http.StatusSeeOther)
+	}
+}
