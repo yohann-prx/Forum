@@ -1,5 +1,6 @@
 package model
 
 type CreatePostPageData struct {
-	// Add your struct fields here
+	Categories   []*Category
+	ErrorMessage string
 }
