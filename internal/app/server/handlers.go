@@ -1,6 +1,7 @@
 package server
 
 import (
+	"SPORTALK/internal/model"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -52,4 +53,59 @@ func execTmpl(w http.ResponseWriter, tmpl *template.Template, data interface{}) 
 		return fmt.Errorf("template execution failed: %v", err)
 	}
 	return nil
+}
+
+func (s *server) saveRegister() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data := model.RegisterPageData{}
+
+		// Vérification de la méthode HTTP
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Récupération des valeurs des champs du formulaire
+		userName := r.FormValue("userName")
+		email := r.FormValue("email")
+		password := r.FormValue("password")
+		rePassword := r.FormValue("rePassword")
+
+		// Vérification si les mots de passe correspondent
+		if password != rePassword {
+			s.logger.Println("Passwords don't match")
+			data.ErrorMsg = "Passwords don't match"
+			execTmpl(w, templates.Lookup("registerPage.html"), data)
+			return
+		}
+
+		// Vérification si l'utilisateur existe déjà
+		err := s.store.User().ExistingUser(userName, email)
+		if err != nil {
+			s.logger.Println("ExistingUser() error:", err)
+			data.UserExistsErrorMsg = "User already exists in the system"
+			execTmpl(w, templates.Lookup("registerPage.html"), data)
+			return
+		}
+
+		// Création d'un nouvel utilisateur
+		user, err := model.NewUser(userName, email, password)
+		if err != nil {
+			s.logger.Println("NewUser() error:", err)
+			data.ErrorMsg = "Failed to create the user"
+			execTmpl(w, templates.Lookup("registerPage.html"), data)
+			return
+		}
+
+		// Enregistrement de l'utilisateur
+		if err = s.store.User().Register(user); err != nil {
+			s.logger.Println("Register() error:", err)
+			data.ErrorMsg = "Failed to register the user"
+			execTmpl(w, templates.Lookup("registerPage.html"), data)
+			return
+		}
+
+		// Redirection vers une page principale après l'inscription réussie
+		http.Redirect(w, r, "/main", http.StatusSeeOther)
+	}
 }
