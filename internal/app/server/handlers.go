@@ -496,3 +496,93 @@ func (s *server) createCategory() http.HandlerFunc {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
+
+func (s *server) categoryPosts() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Vérification de la méthode HTTP
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Récupération de l'utilisateur actuel s'il existe
+		var user *model.User
+		if sessionCookie, err := r.Cookie("session_uuid"); err == nil {
+			session, err := s.store.Session().GetByUUID(sessionCookie.Value)
+			if err == nil {
+				user, _ = s.store.User().GetByUUID(session.UserUUID)
+			}
+		}
+
+		// Récupération de l'ID de catégorie depuis l'URL
+		categoryIDStr := strings.TrimPrefix(r.URL.Path, "/category/")
+		categoryID, err := strconv.Atoi(categoryIDStr)
+		if err != nil {
+			s.logger.Println("Error converting category ID:", err)
+			http.Error(w, "Invalid category ID", http.StatusBadRequest)
+			return
+		}
+
+		// Récupération de tous les posts dans la catégorie spécifiée
+		posts, err := s.store.Post().GetByCategory(categoryID)
+		if err != nil {
+			s.logger.Println("Error fetching posts:", err)
+			http.Error(w, "Error fetching posts by category", http.StatusInternalServerError)
+			return
+		}
+
+		// Pour chaque post, enrichir les données
+		for _, post := range posts {
+			// Récupération de l'utilisateur qui a créé le post
+			fetchedUser, err := s.store.User().GetByUUID(post.UserID)
+			if err != nil {
+				s.logger.Printf("Error fetching user for post %s: %v\n", post.ID, err)
+				continue // Passer au post suivant en cas d'erreur
+			}
+			post.User = fetchedUser
+
+			// Récupération des catégories associées à chaque post
+			categories, err := s.store.Post().GetCategories(post.ID)
+			if err != nil {
+				s.logger.Printf("Error fetching categories for post %s: %v\n", post.ID, err)
+				continue // Passer au post suivant en cas d'erreur
+			}
+			post.Categories = categories
+
+			// Récupération des commentaires avec réactions pour chaque post
+			commentsWithReactions, err := s.store.Comment().GetCommentsWithReactionsByPostID(post.ID)
+			if err != nil {
+				s.logger.Printf("Error fetching comments with reactions for post %s: %v\n", post.ID, err)
+				continue // Passer au post suivant en cas d'erreur
+			}
+			for _, comment := range commentsWithReactions {
+				// Récupération de l'utilisateur qui a créé le commentaire
+				fetchedUser, err := s.store.User().GetByUUID(comment.UserID)
+				if err != nil {
+					s.logger.Printf("Error fetching user for comment %s: %v\n", comment.ID, err)
+					continue // Passer au commentaire suivant en cas d'erreur
+				}
+				comment.User = fetchedUser
+			}
+			post.Comments = commentsWithReactions
+		}
+
+		// Récupération de toutes les catégories sauf celle actuellement utilisée
+		allCategories, err := s.store.Category().GetAll()
+		if err != nil {
+			s.logger.Println("Error fetching categories:", err)
+			http.Error(w, "Error fetching all categories", http.StatusInternalServerError)
+			return
+		}
+
+		// Préparation des données à passer au template
+		data := &model.PageData{
+			User:       user,
+			Posts:      posts,
+			Categories: allCategories,
+		}
+
+		// Exécution du template avec les données
+		execTmpl(w, templates.Lookup("home.html"), data)
+	}
+}
