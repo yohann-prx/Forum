@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strings"
 )
 
 var templates = template.Must(template.ParseGlob("./web/templates/*.html"))
@@ -191,5 +192,110 @@ func (s *server) login() http.HandlerFunc {
 
 		// Redirection de l'utilisateur vers sa page d'accueil
 		http.Redirect(w, r, "/home", http.StatusSeeOther)
+	}
+}
+
+func (s *server) serveStatic() http.HandlerFunc {
+	fs := http.FileServer(http.Dir("./web/static"))
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Vérification de la méthode HTTP
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Sécurité : Vérifier que le chemin commence bien par "/static/"
+		if !strings.HasPrefix(r.URL.Path, "/static/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Utilisation de http.StripPrefix pour servir les fichiers statiques
+		http.StripPrefix("/static/", fs).ServeHTTP(w, r)
+	}
+}
+
+func (s *server) home() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Vérification de la méthode HTTP
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Récupération de l'utilisateur actuel s'il existe
+		var user *model.User
+		if sessionCookie, err := r.Cookie("session_uuid"); err == nil {
+			session, err := s.store.Session().GetByUUID(sessionCookie.Value)
+			if err == nil {
+				user, _ = s.store.User().GetByUUID(session.UserUUID)
+			}
+		}
+
+		// Récupération de tous les posts
+		posts, err := s.store.Post().GetAll()
+		if err != nil {
+			s.logger.Println("error fetching posts:", err)
+			http.Error(w, "error fetching posts", http.StatusInternalServerError)
+			return
+		}
+
+		// Récupération des informations complémentaires pour chaque post
+		for _, post := range posts {
+			// Récupération de l'utilisateur qui a créé le post
+			fetchedUser, err := s.store.User().GetByUUID(post.UserID)
+			if err != nil {
+				s.logger.Printf("error fetching user for post %s: %v\n", post.ID, err)
+				http.Error(w, "error fetching post user", http.StatusInternalServerError)
+				return
+			}
+			post.User = fetchedUser
+
+			// Récupération des catégories pour chaque post
+			categories, err := s.store.Post().GetCategories(post.ID)
+			if err != nil {
+				s.logger.Printf("error fetching categories for post %s: %v\n", post.ID, err)
+				http.Error(w, "error fetching post categories", http.StatusInternalServerError)
+				return
+			}
+			post.Categories = categories
+
+			// Récupération des commentaires avec réactions pour chaque post
+			comments, err := s.store.Comment().GetCommentsWithReactionsByPostID(post.ID)
+			if err != nil {
+				s.logger.Printf("error fetching comments for post %s: %v\n", post.ID, err)
+				http.Error(w, "error fetching post comments", http.StatusInternalServerError)
+				return
+			}
+			for _, comment := range comments {
+				fetchedUser, err := s.store.User().GetByUUID(comment.UserID)
+				if err != nil {
+					s.logger.Printf("error fetching user for comment %s: %v\n", comment.ID, err)
+					http.Error(w, "error fetching comment user", http.StatusInternalServerError)
+					return
+				}
+				comment.User = fetchedUser
+			}
+			post.Comments = comments
+		}
+
+		// Récupération de toutes les catégories
+		allCategories, err := s.store.Category().GetAll()
+		if err != nil {
+			s.logger.Println("error fetching categories:", err)
+			http.Error(w, "error fetching categories", http.StatusInternalServerError)
+			return
+		}
+
+		// Création des données à passer au template
+		data := &model.PageData{
+			User:       user,
+			Posts:      posts,
+			Categories: allCategories,
+		}
+
+		// Exécution du template avec les données
+		execTmpl(w, templates.Lookup("main.html"), data)
 	}
 }
