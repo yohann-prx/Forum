@@ -4,6 +4,7 @@ import (
 	"SPORTALK/internal/model"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -297,5 +298,61 @@ func (s *server) home() http.HandlerFunc {
 
 		// Exécution du template avec les données
 		execTmpl(w, templates.Lookup("main.html"), data)
+	}
+}
+
+func execTmpl(w http.ResponseWriter, tmpl *template.Template, data interface{}) {
+	// Utilisation de Recover pour capturer les paniques potentielles lors de l'exécution du template
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("Panic recovered in execTmpl:", r)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+	}()
+
+	// Exécution du template et gestion des erreurs
+	err := tmpl.Execute(w, data)
+	if err != nil {
+		log.Println("Error executing template:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func (s *server) createPostPage() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Vérification de la méthode HTTP
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Récupération de toutes les catégories
+		categories, err := s.store.Category().GetAll()
+		if err != nil {
+			s.logger.Println("Failed to load categories:", err)
+			http.Error(w, "Failed to load categories", http.StatusInternalServerError)
+			return
+		}
+
+		// Gestion des erreurs basée sur les paramètres d'URL
+		errMsg := ""
+		if errParam := r.URL.Query().Get("error"); errParam == "atleast_one_category_required" {
+			errMsg = "At least one category must be selected."
+		}
+
+		// Données à passer au template
+		data := struct {
+			Categories   []*model.Category
+			ErrorMessage string
+		}{
+			Categories:   categories,
+			ErrorMessage: errMsg,
+		}
+
+		// Exécution du template avec les données
+		if err := templates.Lookup("createPostPage.html").Execute(w, data); err != nil {
+			s.logger.Println("Failed to execute template:", err)
+			http.Error(w, "Failed to execute template", http.StatusInternalServerError)
+		}
 	}
 }
