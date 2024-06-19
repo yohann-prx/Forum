@@ -1,8 +1,8 @@
 package sqlite
 
 import (
-	"SPORTALK/internal/model"
-	"SPORTALK/internal/store"
+	"Forum/internal/model"
+	"Forum/internal/store"
 	"database/sql"
 	"log"
 )
