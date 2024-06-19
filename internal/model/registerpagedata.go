@@ -1,6 +1,7 @@
 package model
 
 type RegisterPageData struct {
-	UserExistsErrorMsg string
-	ErrorMsg           string
+	Username string
+	Email    string
+	Password string
 }
