@@ -109,3 +109,29 @@ func (s *server) saveRegister() http.HandlerFunc {
 		http.Redirect(w, r, "/main", http.StatusSeeOther)
 	}
 }
+
+func (s *server) loginPage() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Vérification de la méthode HTTP
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// Déterminer le message d'erreur à afficher
+		errorMessage := ""
+		errMsg := r.URL.Query().Get("error")
+		switch errMsg {
+		case "notfound":
+			errorMessage = "User not found. Please try again."
+		case "invalid":
+			errorMessage = "Invalid username or password. Please try again."
+		default:
+			// Aucune erreur spécifiée dans l'URL
+		}
+
+		// Exécuter le template avec les données nécessaires
+		data := map[string]string{"ErrorMessage": errorMessage}
+		execTmpl(w, templates.Lookup("login.html"), data)
+	}
+}
