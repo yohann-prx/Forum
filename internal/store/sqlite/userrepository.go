@@ -1,9 +1,10 @@
 package sqlite
 
 import (
-	"Forum/internal/model"
+	"SPORTALK/internal/model"
 	"errors"
 	"fmt"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
